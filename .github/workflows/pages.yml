@@ -1,4 +1,6 @@
-name: Deploy to GitHub Pages
+# Keeps the gh-pages branch identical to main. GitHub Pages serves gh-pages.
+# Uses only the built-in GITHUB_TOKEN; no Pages admin API, no third-party actions.
+name: Sync main to gh-pages
 
 on:
   push:
@@ -6,27 +8,19 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: gh-pages-sync
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  sync:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
         with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          ref: main
+          fetch-depth: 0
+      - name: Force-push main to gh-pages
+        run: git push --force origin HEAD:refs/heads/gh-pages
