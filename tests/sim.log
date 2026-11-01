@@ -7,10 +7,13 @@ PASS run 2026-10-31 +sample mods (200 steps) no throw - turns=112 floor=5 kills=
 PASS run sim-check-c +sample mods (200 steps) no throw - turns=163 floor=7 kills=24 hp=0/32 hits=30 over=true won=false
 PASS hero position changes
 PASS at least one enemy HP drops or an enemy dies - hit turns=153
+PASS run is over only at hp 0 or on a win
 PASS same seed + same inputs gives the same state
 PASS step() does not mutate its input
 PASS unknown action is ignored
 PASS input after run over is ignored
+PASS potion at full HP is not drunk - potions=1 hp=20/20
+PASS potion below full HP heals and is used up - potions=0 hp=20/20
 PASS js/rng.js has no Math.random/Date/performance.now
 PASS js/sim.js has no Math.random/Date/performance.now
 PASS js/floors.js has no Math.random/Date/performance.now
