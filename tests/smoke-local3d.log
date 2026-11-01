@@ -1,0 +1,10 @@
+PASS [local3d] page loads - HTTP 200
+PASS [local3d] game starts (HUD filled in)
+INFO [local3d] today-label: SAMPLE FLOOR - not from a real comment
+PASS [local3d] WebGL renderer created - gl=webgl2
+PASS [local3d] canvas has non-blank pixels - painted=156816 colors=64 size=396x396
+PASS [local3d] input changes the game (HUD/log or canvas) - hud changed, canvas changed
+INFO [local3d] hud after: hp:20/20|floor:1|atk:5|log:You enter the Daily Tower. Floor 1.You defeat the slime!You defeat the slime!Full HP. You leave the potion for later.|run_over:false
+INFO [local3d] RUN_OVER=no (overlay hidden, run still going)
+PASS [local3d] no console or page errors - 0 error(s)
+SMOKE_LOCAL3D=PASS

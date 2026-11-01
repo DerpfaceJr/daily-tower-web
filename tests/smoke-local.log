@@ -1,7 +1,7 @@
 PASS [local] page loads - HTTP 200
 PASS [local] game starts (HUD filled in)
 INFO [local] today-label: SAMPLE FLOOR - not from a real comment
-PASS [local] canvas has non-blank pixels - painted=123904 colors=16
+PASS [local] canvas has non-blank pixels - painted=123904 colors=16 size=352x352
 PASS [local] input changes the game (HUD/log or canvas) - hud changed, canvas changed
 INFO [local] hud after: hp:20/20|floor:1|atk:5|log:You enter the Daily Tower. Floor 1.You defeat the slime!You defeat the slime!Full HP. You leave the potion for later.|run_over:false
 INFO [local] RUN_OVER=no (overlay hidden, run still going)

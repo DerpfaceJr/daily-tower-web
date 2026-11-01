@@ -16,7 +16,7 @@
     {
       "label": "canvas has non-blank pixels",
       "ok": true,
-      "info": "painted=123904 colors=16"
+      "info": "painted=123904 colors=16 size=352x352"
     },
     {
       "label": "input changes the game (HUD/log or canvas)",
