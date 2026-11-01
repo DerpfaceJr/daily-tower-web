@@ -115,6 +115,21 @@ function takeStairs(s) {
   return 'floor';
 }
 
+// Potions are only drunk when they would heal; at full HP they stay put.
+function pickUpPotion(s, x, y) {
+  const pi = s.potions.findIndex((o) => o.x === x && o.y === y);
+  if (pi < 0) return;
+  const p = s.player;
+  if (p.hp >= p.maxHp) {
+    log(s, 'Full HP. You leave the potion for later.');
+    return;
+  }
+  s.potions.splice(pi, 1);
+  const heal = Math.min(POTION_HEAL, p.maxHp - p.hp);
+  p.hp += heal;
+  log(s, `You drink a potion (+${heal} HP).`);
+}
+
 // false = no turn used, true = turn used, 'floor' = turn used, skip enemies.
 function playerAct(s, rng, action) {
   if (action === 'wait') return true;
@@ -130,13 +145,7 @@ function playerAct(s, rng, action) {
   if (tile === WALL || tile === PILLAR) return false;
   p.x = x;
   p.y = y;
-  const pi = s.potions.findIndex((o) => o.x === x && o.y === y);
-  if (pi >= 0) {
-    s.potions.splice(pi, 1);
-    const heal = Math.min(POTION_HEAL, p.maxHp - p.hp);
-    p.hp += heal;
-    log(s, `You drink a potion (+${heal} HP).`);
-  }
+  pickUpPotion(s, x, y);
   if (tile === SPIKES) hurtPlayer(s, SPIKE_DAMAGE, 'Spikes stab you');
   if (tile === STAIRS && !s.over) return takeStairs(s);
   return true;

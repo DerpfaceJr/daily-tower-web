@@ -3,7 +3,7 @@
 // Prints PASS/FAIL lines, then SIM=PASS or SIM=FAIL. Exits 1 on any failure.
 import { readFileSync } from 'node:fs';
 import { newRun, step } from '../js/sim.js';
-import { WALL, PILLAR } from '../js/floors.js';
+import { WALL, PILLAR, STAIRS, SPIKES } from '../js/floors.js';
 
 let failed = 0;
 const check = (label, ok, info = '') => {
@@ -46,6 +46,8 @@ function choose(s, i) {
   return open[0][0];
 }
 
+let badOver = 0;
+let badOverInfo = '';
 function play(seed, mods, steps = 200) {
   let s = newRun(seed, mods);
   const start = { x: s.player.x, y: s.player.y, floor: s.floor };
@@ -56,6 +58,11 @@ function play(seed, mods, steps = 200) {
     s = step(prev, choose(prev, i));
     if (s.floor !== start.floor || s.player.x !== start.x || s.player.y !== start.y) moved = true;
     if (s.kills > prev.kills || (s.floor === prev.floor && hpSum(s) < hpSum(prev))) hits++;
+    // A run may only end by falling (hp 0) or winning.
+    if (s.over && s.player.hp > 0 && !s.won) {
+      badOver++;
+      if (!badOverInfo) badOverInfo = `${seed} turn=${s.turns} floor=${s.floor} hp=${s.player.hp} log=${s.log.slice(-2).join(' / ')}`;
+    }
   }
   return { s, moved, hits };
 }
@@ -85,6 +92,7 @@ for (const [seed, mods] of RUNS) {
 }
 check('hero position changes', anyMoved);
 check('at least one enemy HP drops or an enemy dies', totalHits > 0, `hit turns=${totalHits}`);
+check('run is over only at hp 0 or on a win', badOver === 0, badOverInfo);
 
 try {
   const a = JSON.stringify(play('determinism', null).s);
@@ -101,6 +109,28 @@ try {
   check('input after run over is ignored', step(over, 'up') === over);
 } catch (err) {
   check('determinism / purity checks no throw', false, String(err));
+}
+
+// Potions: left in place at full HP, drunk (and removed) when they heal.
+try {
+  const base = structuredClone(newRun('potion-check'));
+  base.enemies = [];
+  const p = base.player;
+  const spot = MOVES.find(([, dx, dy]) => {
+    const t = base.tiles[p.y + dy]?.[p.x + dx];
+    return t !== undefined && t !== WALL && t !== PILLAR && t !== STAIRS && t !== SPIKES;
+  });
+  if (!spot) throw new Error('no open tile next to start');
+  const [dir, dx, dy] = spot;
+  base.potions = [{ x: p.x + dx, y: p.y + dy }];
+  const full = step(base, dir);
+  check('potion at full HP is not drunk', full.potions.length === 1 && full.player.hp === full.player.maxHp, `potions=${full.potions.length} hp=${full.player.hp}/${full.player.maxHp}`);
+  const hurt = structuredClone(base);
+  hurt.player.hp = hurt.player.maxHp - 3;
+  const healed = step(hurt, dir);
+  check('potion below full HP heals and is used up', healed.potions.length === 0 && healed.player.hp === healed.player.maxHp, `potions=${healed.potions.length} hp=${healed.player.hp}/${healed.player.maxHp}`);
+} catch (err) {
+  check('potion checks no throw', false, String(err));
 }
 
 const BANNED = /Math\.random|new Date|Date\.now|performance\.now/;

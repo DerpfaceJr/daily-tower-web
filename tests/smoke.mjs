@@ -36,12 +36,22 @@ const canvasInfo = (page) => page.evaluate(() => {
   return { painted, colors: colors.size, hash };
 });
 
+// #over is the run-over overlay: hidden while the run is still going.
+// run_over:true means the overlay is showing.
 const hudText = (page) => page.evaluate(() =>
   ['hp', 'floor', 'atk', 'log', 'over'].map((id) => {
     const el = document.getElementById(id);
     if (!el) return `${id}:missing`;
-    return id === 'over' ? `over:${el.hidden}` : `${id}:${el.textContent}`;
+    return id === 'over' ? `run_over:${!el.hidden}` : `${id}:${el.textContent}`;
   }).join('|'));
+
+// Why the run ended, read from the overlay (empty object while still running).
+const overInfo = (page) => page.evaluate(() => {
+  const o = document.getElementById('over');
+  if (!o || o.hidden) return { runOver: false };
+  const t = (id) => document.getElementById(id)?.textContent || '';
+  return { runOver: true, title: t('over-title'), floor: t('over-floor'), turns: t('over-turns'), kills: t('over-kills'), hp: t('hp') };
+});
 
 let browser;
 try {
@@ -81,9 +91,12 @@ try {
     await page.keyboard.press(keys[i % keys.length]);
     await page.waitForTimeout(25);
   }
-  // Touch D-pad buttons too.
-  for (const act of ['up', 'right', 'down', 'left', 'wait']) {
-    await page.locator(`[data-act="${act}"]`).click({ timeout: 2000 }).catch((e) => errors.push(`dpad ${act}: ${e.message.split('\n')[0]}`));
+  // Touch D-pad buttons too (skipped automatically if the run is over).
+  const mid = await overInfo(page);
+  if (!mid.runOver) {
+    for (const act of ['up', 'right', 'down', 'left', 'wait']) {
+      await page.locator(`[data-act="${act}"]`).click({ timeout: 2000 }).catch((e) => errors.push(`dpad ${act}: ${e.message.split('\n')[0]}`));
+    }
   }
   await page.waitForTimeout(200);
 
@@ -93,6 +106,17 @@ try {
   const canvasChanged = after.hash !== before.hash;
   check('input changes the game (HUD/log or canvas)', hudChanged || canvasChanged, `hud ${hudChanged ? 'changed' : 'same'}, canvas ${canvasChanged ? 'changed' : 'same'}`);
   console.log(`INFO [${name}] hud after: ${hudAfter.slice(0, 300)}`);
+
+  const end = await overInfo(page);
+  if (end.runOver) {
+    console.log(`INFO [${name}] RUN_OVER=yes reason="${end.title}" ${end.floor} | ${end.turns} | ${end.kills} | hp ${end.hp}`);
+    // A run may only end by falling (0 HP) or clearing the tower.
+    const hpLeft = parseInt(end.hp, 10);
+    const consistent = /cleared/i.test(end.title) || hpLeft === 0;
+    check('run-over screen matches state (fell at 0 HP or cleared)', consistent, `title=${end.title} hp=${end.hp}`);
+  } else {
+    console.log(`INFO [${name}] RUN_OVER=no (overlay hidden, run still going)`);
+  }
   await page.screenshot({ path: outPath(`${name}.png`), fullPage: true });
 } catch (err) {
   errors.push('smoke: ' + (err && err.message ? err.message.split('\n')[0] : String(err)));
