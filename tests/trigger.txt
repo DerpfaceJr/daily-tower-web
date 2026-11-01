@@ -1,0 +1,3 @@
+Edit this line and push to main to re-run .github/workflows/check.yml.
+Results land on branch `checks` at tests/status.txt.
+run: 1
