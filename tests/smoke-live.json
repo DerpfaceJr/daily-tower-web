@@ -1,0 +1,33 @@
+{
+  "name": "live",
+  "url": "https://derpfacejr.github.io/daily-tower-web/",
+  "ok": true,
+  "results": [
+    {
+      "label": "page loads",
+      "ok": true,
+      "info": "HTTP 200"
+    },
+    {
+      "label": "game starts (HUD filled in)",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "label": "canvas has non-blank pixels",
+      "ok": true,
+      "info": "painted=123904 colors=16"
+    },
+    {
+      "label": "input changes the game (HUD/log or canvas)",
+      "ok": true,
+      "info": "hud changed, canvas changed"
+    },
+    {
+      "label": "no console or page errors",
+      "ok": true,
+      "info": "0 error(s)"
+    }
+  ],
+  "errors": []
+}

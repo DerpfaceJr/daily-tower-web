@@ -1,0 +1,18 @@
+PASS run 2026-10-31 (200 steps) no throw - turns=146 floor=6 kills=17 hp=0/30 hits=22 over=true won=false
+PASS run 2026-11-01 (200 steps) no throw - turns=200 floor=3 kills=8 hp=20/24 hits=8 over=false won=false
+PASS run 2026-11-02 (200 steps) no throw - turns=146 floor=7 kills=24 hp=0/32 hits=31 over=true won=false
+PASS run sim-check-a (200 steps) no throw - turns=112 floor=4 kills=11 hp=0/26 hits=13 over=true won=false
+PASS run sim-check-b (200 steps) no throw - turns=157 floor=7 kills=24 hp=0/32 hits=29 over=true won=false
+PASS run 2026-10-31 +sample mods (200 steps) no throw - turns=112 floor=5 kills=16 hp=0/28 hits=20 over=true won=false
+PASS run sim-check-c +sample mods (200 steps) no throw - turns=163 floor=7 kills=24 hp=0/32 hits=30 over=true won=false
+PASS hero position changes
+PASS at least one enemy HP drops or an enemy dies - hit turns=153
+PASS same seed + same inputs gives the same state
+PASS step() does not mutate its input
+PASS unknown action is ignored
+PASS input after run over is ignored
+PASS js/rng.js has no Math.random/Date/performance.now
+PASS js/sim.js has no Math.random/Date/performance.now
+PASS js/floors.js has no Math.random/Date/performance.now
+PASS js/enemies.js has no Math.random/Date/performance.now
+SIM=PASS
