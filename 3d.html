@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Tower (3D view)</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    canvas#game.gl { display: block; width: 100%; max-width: 520px; height: auto; aspect-ratio: 1 / 1; margin: 0 auto; touch-action: manipulation; }
+    .mode a { color: inherit; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>Daily Tower <small>3D</small></h1>
+      <p class="seed" id="seed">Loading today's tower…</p>
+      <p class="mode"><a href="index.html">2D</a> · 3D view (experimental). Same daily tower and rules as the 2D game.</p>
+    </header>
+
+    <section class="hud" aria-label="Status">
+      <span>HP <b id="hp">-</b></span>
+      <span>Floor <b id="floor">-</b>/10</span>
+      <span>ATK <b id="atk">-</b></span>
+      <button id="restart" type="button" class="restart">Restart</button>
+    </section>
+
+    <div class="stage">
+      <canvas id="game" class="gl" data-view="3d" aria-label="Game board (3D)"></canvas>
+      <div id="over" class="over" hidden>
+        <h2 id="over-title">Run over</h2>
+        <p id="over-floor"></p>
+        <p id="over-turns"></p>
+        <p id="over-kills"></p>
+        <p id="over-best" class="best"></p>
+        <button id="retry" type="button">Try again (same daily tower)</button>
+      </div>
+    </div>
+
+    <section class="controls" aria-label="Touch controls">
+      <div class="dpad">
+        <button type="button" class="up" data-act="up" aria-label="Up">▲</button>
+        <button type="button" class="left" data-act="left" aria-label="Left">◀</button>
+        <button type="button" class="wait" data-act="wait">Wait</button>
+        <button type="button" class="right" data-act="right" aria-label="Right">▶</button>
+        <button type="button" class="down" data-act="down" aria-label="Down">▼</button>
+      </div>
+    </section>
+
+    <p class="hint">Arrows / WASD to move, Space to wait, R to restart. Bump enemies to attack. Reach the stairs; beat the Warden on floor 10. Up = away from the camera.</p>
+
+    <ul id="log" class="log"></ul>
+    <p id="log-latest" class="sr-only" aria-live="polite"></p>
+
+    <section class="today" aria-label="Floor of the day">
+      <h2><span id="today-title">Today's floor</span> <span id="sample-badge" class="badge" hidden>SAMPLE</span></h2>
+      <p id="today-label">Loading…</p>
+      <p id="today-detail" class="muted"></p>
+      <p id="today-comment" class="muted"></p>
+    </section>
+
+    <p class="muted">3D view uses three.js r160 (MIT licence), loaded from jsDelivr.</p>
+    <footer>Game in development. Made with AI-written code.</footer>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

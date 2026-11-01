@@ -1,6 +1,6 @@
-# Runs the sim check and browser smoke tests, then commits tests/status.txt
-# and screenshots to the `checks` branch. Never pushes to main or gh-pages,
-# so it cannot retrigger itself or pages.yml.
+# Runs the sim check and browser smoke tests (2D and 3D, local and live), then
+# commits tests/status.txt and screenshots to the `checks` branch. Never pushes
+# to main or gh-pages, so it cannot retrigger itself or pages.yml.
 # Re-run: Actions > check > Run workflow, or edit tests/trigger.txt on main.
 name: check
 
@@ -23,7 +23,7 @@ defaults:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +54,15 @@ jobs:
           sleep 2
           node tests/smoke.mjs local http://127.0.0.1:8000/ 2>&1 | tee tests/out/smoke-local.log
 
+      - name: Smoke test 3D (local copy of this commit)
+        id: smoke3d_local
+        if: steps.pw.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python3 -m http.server 8001 --bind 127.0.0.1 > "$RUNNER_TEMP/http3d.log" 2>&1 &
+          sleep 2
+          node tests/smoke.mjs local3d http://127.0.0.1:8001/3d.html 2>&1 | tee tests/out/smoke-local3d.log
+
       - name: Smoke test (live GitHub Pages)
         id: smoke_live
         if: steps.pw.outcome == 'success'
@@ -63,12 +72,21 @@ jobs:
           sleep 45
           node tests/smoke.mjs live https://derpfacejr.github.io/daily-tower-web/ 2>&1 | tee tests/out/smoke-live.log
 
+      - name: Smoke test 3D (live GitHub Pages)
+        id: smoke3d_live
+        if: steps.pw.outcome == 'success'
+        continue-on-error: true
+        run: |
+          node tests/smoke.mjs live3d https://derpfacejr.github.io/daily-tower-web/3d.html 2>&1 | tee tests/out/smoke-live3d.log
+
       - name: Write status.txt and push to checks branch
         if: always()
         env:
           SIM: ${{ steps.sim.outcome }}
           LOCAL: ${{ steps.smoke_local.outcome }}
           LIVE: ${{ steps.smoke_live.outcome }}
+          LOCAL3D: ${{ steps.smoke3d_local.outcome }}
+          LIVE3D: ${{ steps.smoke3d_live.outcome }}
           PW: ${{ steps.pw.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -80,6 +98,8 @@ jobs:
             echo "SIM=$(res "$SIM")"
             echo "SMOKE_LOCAL=$(res "$LOCAL")"
             echo "SMOKE_LIVE=$(res "$LIVE")"
+            echo "SMOKE3D_LOCAL=$(res "$LOCAL3D")"
+            echo "SMOKE3D_LIVE=$(res "$LIVE3D")"
             echo "PLAYWRIGHT_INSTALL=$(res "$PW")"
             echo "RUN_ID=${GITHUB_RUN_ID}"
             echo "RUN_URL=${RUN_URL}"
@@ -87,6 +107,7 @@ jobs:
             echo "EVENT=${GITHUB_EVENT_NAME}"
             echo "DATE_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "LIVE_URL=https://derpfacejr.github.io/daily-tower-web/"
+            echo "LIVE3D_URL=https://derpfacejr.github.io/daily-tower-web/3d.html"
             echo "CONSOLE_ERRORS:"
             echo "${errs:-none}"
             echo "FAILED_CHECKS:"
@@ -118,7 +139,7 @@ jobs:
       - name: Fail the job if any check did not pass
         if: always()
         run: |
-          if grep -Eq '^(SIM|SMOKE_LOCAL|SMOKE_LIVE)=(FAIL|NOT_RUN)' tests/out/status.txt; then
+          if grep -Eq '^(SIM|SMOKE_LOCAL|SMOKE_LIVE|SMOKE3D_LOCAL|SMOKE3D_LIVE)=(FAIL|NOT_RUN)' tests/out/status.txt; then
             echo "At least one check did not pass; see tests/status.txt on branch checks."
             exit 1
           fi

@@ -1,1 +1,1 @@
-round 32: smoke run_over label fix, potion not drunk at full HP
+re-run checks: 3D view added (3d.html, js/render3d.js), 2026-10-31

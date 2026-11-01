@@ -1,4 +1,5 @@
 // Browser entry: builds the daily seed, loads today's floor, wires input.
+// Shared by index.html (2D canvas, default) and 3d.html (three.js view).
 import { newRun, step } from './sim.js';
 import { render } from './render.js';
 import { THEMES } from './floors.js';
@@ -15,7 +16,11 @@ const KEYS = {
 // Same seed for everyone on a given UTC day.
 const seed = new Date().toISOString().slice(0, 10);
 const $ = (id) => document.getElementById(id);
-const ctx = $('game').getContext('2d');
+// 2D by default. 3d.html marks its canvas data-view="3d" and loads render3d.js.
+const canvas = $('game');
+const VIEW_3D = canvas.dataset.view === '3d';
+const ctx = VIEW_3D ? null : canvas.getContext('2d');
+let paint = VIEW_3D ? null : (s) => render(ctx, s);
 let mods = null; // null = no modified floor
 let state = null;
 
@@ -101,7 +106,7 @@ function newLines(prev, next) {
 
 // The visible list is redrawn; only #log-latest is aria-live.
 function draw(prevLog = null) {
-  render(ctx, state);
+  if (paint) paint(state);
   const p = state.player;
   $('hp').textContent = `${p.hp}/${p.maxHp}`;
   $('floor').textContent = String(state.floor);
@@ -176,4 +181,13 @@ $('restart').addEventListener('click', (e) => {
 });
 
 $('seed').textContent = `Tower of ${seed} (UTC)`;
-loadToday().then(restart);
+// The 3D renderer (and three.js) is only loaded on 3d.html.
+const viewReady = VIEW_3D
+  ? import('./render3d.js')
+      .then((m) => { paint = m.createRenderer(canvas); })
+      .catch((err) => {
+        console.error('3D view failed to load:', err);
+        $('seed').textContent += ' · 3D view failed to load. Try the 2D page.';
+      })
+  : Promise.resolve();
+Promise.all([viewReady, loadToday()]).then(restart);
