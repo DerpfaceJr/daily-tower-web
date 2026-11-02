@@ -1,28 +1,38 @@
-// Browser entry: builds the daily seed, loads today's floor, wires input.
-// Shared by index.html (2D canvas, default) and 3d.html (three.js view).
-import { newRun, step } from './sim.js';
-import { render } from './render.js';
+// Browser entry: daily seed, today's floor, hero start screen, input and HUD.
+// index.html is the only game page (3D view via render3d.js and three.js).
+// Player-supplied and fetched strings are only ever set via textContent.
+import { newRun, step, CLASSES, CLASS_IDS, SKILLS, UPGRADES, isClass } from './sim.js';
 import { THEMES } from './floors.js';
 import { KINDS } from './enemies.js';
 
 const TRAPS = ['none', 'spikes'];
 const DEFAULT_MODS = { floor: 5, theme: 'stone', enemy: null, trap: 'none', sample: false };
-const KEYS = {
+const MOVE_KEYS = {
   ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
   Space: 'wait',
 };
+const SKILL_KEYS = {
+  Digit1: 'skill1', Numpad1: 'skill1', KeyQ: 'skill1',
+  Digit2: 'skill2', Numpad2: 'skill2', KeyE: 'skill2',
+  Digit3: 'skill3', Numpad3: 'skill3', KeyF: 'skill3',
+};
+const PICK_KEYS = {
+  Digit1: 'pick0', Numpad1: 'pick0', Digit2: 'pick1', Numpad2: 'pick1', Digit3: 'pick2', Numpad3: 'pick2',
+};
+const SKILL_LABEL = ['1/Q', '2/E', '3/F'];
+const HERO_KEY = 'daily-tower-hero';
 
 // Same seed for everyone on a given UTC day.
 const seed = new Date().toISOString().slice(0, 10);
 const $ = (id) => document.getElementById(id);
-// 2D by default. 3d.html marks its canvas data-view="3d" and loads render3d.js.
 const canvas = $('game');
-const VIEW_3D = canvas.dataset.view === '3d';
-const ctx = VIEW_3D ? null : canvas.getContext('2d');
-let paint = VIEW_3D ? null : (s) => render(ctx, s);
+let paint = null;
 let mods = null; // null = no modified floor
 let state = null;
+let hero = null; // { name, cls }
+let pickedCls = 'warrior';
+let ready = false;
 
 // Keep only whitelisted values; anything else falls back to defaults.
 function sanitizeMods(raw) {
@@ -39,6 +49,8 @@ function sanitizeMods(raw) {
 
 // Untrusted strings: type-checked, length-capped, only ever set via textContent.
 const cleanText = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+// Hero names: letters, digits, space, - and _ only; max 16.
+const cleanName = (v) => (typeof v === 'string' ? v.replace(/[^A-Za-z0-9 _-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) : '');
 
 function showToday(raw, why = "Today's floor: unavailable (default floor)") {
   const sample = !!raw && raw.sample === true;
@@ -60,13 +72,12 @@ function showToday(raw, why = "Today's floor: unavailable (default floor)") {
 }
 
 async function loadToday() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch('./floors/today.json', { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const raw = await res.json();
-    clearTimeout(timer);
     if (!raw || typeof raw !== 'object') throw new Error('bad shape');
     // Only today's file (or a labelled sample) changes the tower.
     if (raw.sample === true || raw.date === seed) {
@@ -80,6 +91,8 @@ async function loadToday() {
     // file:// or network failure: play with no modified floor.
     mods = null;
     showToday(null);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -95,6 +108,109 @@ function saveBest(floor) {
   }
 }
 
+// Hero save: { v:1, name, cls }. Anything malformed is ignored.
+function loadHero() {
+  try {
+    const raw = localStorage.getItem(HERO_KEY);
+    if (!raw) return null;
+    const h = JSON.parse(raw);
+    if (!h || typeof h !== 'object' || h.v !== 1 || !isClass(h.cls)) return null;
+    return { name: cleanName(h.name) || 'Hero', cls: h.cls };
+  } catch (err) {
+    return null;
+  }
+}
+
+function saveHero(h) {
+  try {
+    localStorage.setItem(HERO_KEY, JSON.stringify({ v: 1, name: h.name, cls: h.cls }));
+  } catch (err) {
+    // storage blocked: the hero lasts for this visit only
+  }
+}
+
+// confirm() can be blocked (some in-app browsers throw, or return false at once
+// without showing a dialog). Then the player taps or presses again within 4 s.
+let armedKey = '';
+let armedAt = 0;
+function ask(key, msg) {
+  let yes = null;
+  try {
+    const t0 = Date.now();
+    yes = window.confirm(msg);
+    if (!yes && Date.now() - t0 < 50) yes = null; // no real dialog was shown
+  } catch (err) {
+    yes = null;
+  }
+  if (yes !== null) return yes;
+  const now = Date.now();
+  if (armedKey === key && now - armedAt < 4000) {
+    armedKey = '';
+    return true;
+  }
+  armedKey = key;
+  armedAt = now;
+  $('log-latest').textContent = `${msg} Tap again to confirm.`;
+  return false;
+}
+
+function buildClassCards() {
+  const box = $('class-cards');
+  box.replaceChildren();
+  for (const id of CLASS_IDS) {
+    const c = CLASSES[id];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `class-card cls-${id}`;
+    b.dataset.cls = id;
+    b.setAttribute('aria-pressed', 'false');
+    const h = document.createElement('strong');
+    h.textContent = c.name;
+    const st = document.createElement('span');
+    st.className = 'stats';
+    st.textContent = `HP ${c.hp} · ATK ${c.atk} · DEF ${c.def} · Crit ${Math.round(c.crit * 100)}% · Dodge ${Math.round(c.dodge * 100)}%`;
+    const ul = document.createElement('ul');
+    c.skills.forEach((sid, i) => {
+      const li = document.createElement('li');
+      li.textContent = `${SKILL_LABEL[i]} ${SKILLS[sid].name} (CD ${SKILLS[sid].cd}): ${SKILLS[sid].text}`;
+      ul.appendChild(li);
+    });
+    b.append(h, st, ul);
+    b.addEventListener('click', () => selectClass(id));
+    box.appendChild(b);
+  }
+}
+
+function selectClass(id) {
+  if (!isClass(id)) return;
+  pickedCls = id;
+  for (const b of document.querySelectorAll('.class-card')) {
+    b.setAttribute('aria-pressed', String(b.dataset.cls === id));
+  }
+}
+
+const heroOpen = () => !$('hero').hidden;
+
+function openHero() {
+  $('hero-name').value = hero ? hero.name : '';
+  selectClass(hero ? hero.cls : pickedCls);
+  $('hero-cancel').hidden = !hero;
+  $('hero').hidden = false;
+  $('hero-name').focus();
+}
+
+function startHero() {
+  hero = { name: cleanName($('hero-name').value) || 'Hero', cls: isClass(pickedCls) ? pickedCls : 'warrior' };
+  saveHero(hero);
+  $('hero').hidden = true;
+  if (ready) restart();
+}
+
+function changeHero() {
+  if (state && !state.over && !ask('hero', 'Change hero? This restarts the run (same daily tower).')) return;
+  openHero();
+}
+
 // Messages added since `prev` (the sim keeps only the last few lines).
 function newLines(prev, next) {
   for (let d = 0; d <= prev.length; d++) {
@@ -108,9 +224,40 @@ function newLines(prev, next) {
 function draw(prevLog = null) {
   if (paint) paint(state);
   const p = state.player;
+  const c = CLASSES[state.cls];
+  $('hero-label').textContent = hero ? hero.name : 'Hero';
+  $('cls').textContent = c.name;
+  $('lvl').textContent = String(p.level);
+  const xp = $('xp');
+  xp.max = p.xpNext;
+  xp.value = p.xp;
+  $('xp-text').textContent = `${p.xp}/${p.xpNext}`;
   $('hp').textContent = `${p.hp}/${p.maxHp}`;
   $('floor').textContent = String(state.floor);
   $('atk').textContent = String(p.atk);
+  $('def').textContent = String(p.def);
+  const fx = [];
+  if (p.shield > 0) fx.push(`Shield ${p.shield}`);
+  if (p.smoke > 0) fx.push(`Smoke ${p.smoke}`);
+  $('status').textContent = fx.join(' · ');
+  c.skills.forEach((sid, i) => {
+    const b = $(`sk${i}`);
+    const cd = p.cd[i];
+    b.querySelector('.sk-key').textContent = SKILL_LABEL[i];
+    b.querySelector('.sk-name').textContent = SKILLS[sid].name;
+    b.querySelector('.sk-cd').textContent = cd > 0 ? String(cd) : 'ready';
+    b.title = SKILLS[sid].text;
+    b.disabled = cd > 0 || !!state.levelUp || state.over;
+  });
+  const lu = state.levelUp;
+  $('levelup').hidden = !lu;
+  if (lu) {
+    lu.choices.forEach((id, i) => {
+      const b = $(`pick${i}`);
+      b.querySelector('.pk-name').textContent = `${i + 1}. ${UPGRADES[id].name}`;
+      b.querySelector('.pk-text').textContent = UPGRADES[id].text;
+    });
+  }
   const list = $('log');
   list.replaceChildren();
   for (const msg of state.log) {
@@ -124,7 +271,10 @@ function draw(prevLog = null) {
 
 function showOver() {
   const best = saveBest(state.floorReached);
+  const p = state.player;
+  $('levelup').hidden = true;
   $('over-title').textContent = state.won ? 'Tower cleared!' : 'You fell';
+  $('over-hero').textContent = `${hero ? hero.name : 'Hero'} the ${CLASSES[state.cls].name}, level ${p.level}`;
   $('over-floor').textContent = `Floor reached: ${state.floorReached}`;
   $('over-turns').textContent = `Turns: ${state.turns}`;
   $('over-kills').textContent = `Kills: ${state.kills}`;
@@ -134,7 +284,11 @@ function showOver() {
 }
 
 function restart() {
-  state = newRun(seed, mods);
+  if (!hero) {
+    openHero();
+    return;
+  }
+  state = newRun(seed, mods, hero.cls);
   $('over').hidden = true;
   draw();
 }
@@ -142,27 +296,36 @@ function restart() {
 // In-run restart: asks first unless the run is already over.
 function askRestart() {
   if (!state) return;
-  if (state.over || confirm('Restart the run from floor 1? (Same daily tower.)')) restart();
+  if (state.over || ask('restart', 'Restart the run from floor 1? (Same daily tower.)')) restart();
 }
 
-// Input is ignored only while loading or on the run-over screen.
+// Input is ignored while loading, on the hero screen or on the run-over screen.
 function act(action) {
-  if (!state || state.over) return;
+  if (!state || state.over || heroOpen()) return;
   const prevLog = state.log;
-  state = step(state, action);
+  const next = step(state, action);
+  if (next === state) return;
+  state = next;
   draw(prevLog);
   if (state.over) showOver();
 }
 
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (heroOpen()) return; // typing a name never moves the hero
+  // Held keys auto-repeat: ignore repeats so holding R cannot arm and confirm
+  // a restart, and holding a key cannot burn turns or skip a level-up pick.
+  if (e.repeat) {
+    if (e.code === 'KeyR' || MOVE_KEYS[e.code] || SKILL_KEYS[e.code]) e.preventDefault();
+    return;
+  }
   if (e.code === 'KeyR') {
     e.preventDefault();
     askRestart();
     return;
   }
-  if (state && state.over) return;
-  const action = KEYS[e.code];
+  if (!state || state.over) return;
+  const action = state.levelUp ? PICK_KEYS[e.code] : MOVE_KEYS[e.code] || SKILL_KEYS[e.code];
   if (!action) return;
   e.preventDefault();
   act(action);
@@ -179,15 +342,36 @@ $('restart').addEventListener('click', (e) => {
   askRestart();
   e.currentTarget.blur();
 });
+$('change-hero').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  changeHero();
+});
+$('hero-start').addEventListener('click', startHero);
+$('hero-cancel').addEventListener('click', () => {
+  if (hero) $('hero').hidden = true;
+});
+$('hero-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    startHero();
+  }
+});
 
 $('seed').textContent = `Tower of ${seed} (UTC)`;
-// The 3D renderer (and three.js) is only loaded on 3d.html.
-const viewReady = VIEW_3D
-  ? import('./render3d.js')
-      .then((m) => { paint = m.createRenderer(canvas); })
-      .catch((err) => {
-        console.error('3D view failed to load:', err);
-        $('seed').textContent += ' · 3D view failed to load. Try the 2D page.';
-      })
-  : Promise.resolve();
-Promise.all([viewReady, loadToday()]).then(restart);
+buildClassCards();
+hero = loadHero();
+if (hero) pickedCls = hero.cls;
+else openHero();
+
+const viewReady = import('./render3d.js')
+  .then((m) => {
+    paint = m.createRenderer(canvas);
+  })
+  .catch((err) => {
+    console.error('3D view failed to load:', err);
+    $('seed').textContent += ' · 3D view failed to load (WebGL or network).';
+  });
+Promise.all([viewReady, loadToday()]).then(() => {
+  ready = true;
+  if (hero && !heroOpen()) restart();
+});

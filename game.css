@@ -1,0 +1,33 @@
+/* Daily Tower v2: 3D view, hero screen, skills, level-up. No inline styles anywhere. */
+[hidden] { display: none !important; }
+
+canvas#game.gl { display: block; width: 100%; max-width: 520px; height: auto; aspect-ratio: 1 / 1; margin: 0 auto; touch-action: manipulation; }
+
+.hud { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; }
+.hud progress { width: 5rem; height: .6rem; vertical-align: middle; accent-color: #e8b354; }
+.hero-tag b#hero-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+
+.skills { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin: .75rem auto; max-width: 520px; }
+.skill, .pick, .dpad button, .class-card, .start, .restart { min-height: 48px; min-width: 48px; touch-action: manipulation; }
+.skill { flex: 1 1 6rem; max-width: 11rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; padding: .35rem .6rem; border-radius: 10px; border: 1px solid #556; background: #23262f; color: #f4f1ea; font: inherit; cursor: pointer; }
+.skill:disabled { opacity: .5; cursor: default; }
+.sk-key { font-size: .75rem; opacity: .75; }
+.sk-name { font-weight: 600; }
+.sk-cd { font-weight: 700; color: #9ee6ff; }
+
+.levelup { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; }
+.pick { display: flex; flex-direction: column; align-items: center; width: min(18rem, 90%); padding: .5rem 1rem; border-radius: 10px; border: 1px solid #667; background: #23262f; color: #f4f1ea; font: inherit; cursor: pointer; }
+.pk-name { font-weight: 700; }
+.pk-text { font-size: .85rem; opacity: .8; }
+
+.hero-screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: 1.25rem; overflow: auto; background: rgba(14, 16, 22, .97); color: #f4f1ea; }
+.hero-screen input { width: min(20rem, 100%); min-height: 44px; padding: .5rem .7rem; border-radius: 8px; border: 1px solid #667; background: #1b1e26; color: inherit; font: inherit; }
+.class-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; width: min(46rem, 100%); }
+.class-card { display: flex; flex-direction: column; gap: .3rem; padding: .75rem; text-align: left; border-radius: 12px; border: 2px solid #445; background: #20232c; color: inherit; font: inherit; cursor: pointer; }
+.class-card[aria-pressed="true"] { border-color: #e8b354; box-shadow: 0 0 0 2px rgba(232, 179, 84, .35); }
+.class-card .stats { font-size: .85rem; opacity: .85; }
+.class-card ul { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
+.cls-warrior strong { color: #e0614f; }
+.cls-rogue strong { color: #6fd08c; }
+.cls-mage strong { color: #b48cf0; }
+.start { padding: .6rem 2.2rem; border: 0; border-radius: 10px; background: #e8b354; color: #1b1e26; font: inherit; font-weight: 700; cursor: pointer; }

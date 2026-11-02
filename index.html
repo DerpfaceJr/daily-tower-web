@@ -3,30 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Daily Tower</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="game.css">
 </head>
 <body>
   <main class="wrap">
     <header>
       <h1>Daily Tower</h1>
       <p class="seed" id="seed">Loading today's tower…</p>
-      <p class="mode"><a href="3d.html">Try 3D</a> (experimental)</p>
       <p id="tip-thanks" class="muted" role="status" hidden>Thanks for the tip! It unlocks nothing; the tower is the same for everyone.</p>
     </header>
 
     <section class="hud" aria-label="Status">
+      <span class="hero-tag"><b id="hero-label">-</b> <span id="cls">-</span> Lv <b id="lvl">1</b></span>
+      <span class="xp">XP <progress id="xp" max="8" value="0"></progress> <span id="xp-text">0/8</span></span>
       <span>HP <b id="hp">-</b></span>
-      <span>Floor <b id="floor">-</b>/10</span>
       <span>ATK <b id="atk">-</b></span>
+      <span>DEF <b id="def">-</b></span>
+      <span>Floor <b id="floor">-</b>/10</span>
+      <span id="status" class="muted"></span>
+      <button id="change-hero" type="button" class="restart">Change hero</button>
       <button id="restart" type="button" class="restart">Restart</button>
     </section>
 
     <div class="stage">
-      <canvas id="game" width="352" height="352" aria-label="Game board"></canvas>
+      <canvas id="game" class="gl" data-view="3d" aria-label="Game board (3D)"></canvas>
+      <div id="levelup" class="over levelup" role="dialog" aria-label="Level up" hidden>
+        <h2>Level up! Pick one</h2>
+        <button id="pick0" type="button" class="pick" data-act="pick0"><span class="pk-name"></span> <span class="pk-text"></span></button>
+        <button id="pick1" type="button" class="pick" data-act="pick1"><span class="pk-name"></span> <span class="pk-text"></span></button>
+        <button id="pick2" type="button" class="pick" data-act="pick2"><span class="pk-name"></span> <span class="pk-text"></span></button>
+      </div>
       <div id="over" class="over" hidden>
         <h2 id="over-title">Run over</h2>
+        <p id="over-hero"></p>
         <p id="over-floor"></p>
         <p id="over-turns"></p>
         <p id="over-kills"></p>
@@ -34,6 +46,12 @@
         <button id="retry" type="button">Try again (same daily tower)</button>
       </div>
     </div>
+
+    <section class="skills" aria-label="Skills">
+      <button id="sk0" type="button" class="skill" data-act="skill1"><span class="sk-key"></span> <span class="sk-name"></span> <span class="sk-cd"></span></button>
+      <button id="sk1" type="button" class="skill" data-act="skill2"><span class="sk-key"></span> <span class="sk-name"></span> <span class="sk-cd"></span></button>
+      <button id="sk2" type="button" class="skill" data-act="skill3"><span class="sk-key"></span> <span class="sk-name"></span> <span class="sk-cd"></span></button>
+    </section>
 
     <section class="controls" aria-label="Touch controls">
       <div class="dpad">
@@ -45,7 +63,7 @@
       </div>
     </section>
 
-    <p class="hint">Arrows / WASD to move, Space to wait, R to restart. Bump enemies to attack. Reach the stairs; beat the Warden on floor 10.</p>
+    <p class="hint">Arrows / WASD to move, Space to wait, 1/2/3 or Q/E/F for skills, R to restart. Skills aim the way you last moved. Bump enemies to attack. Reach the stairs; beat the Warden on floor 10. Up = away from the camera.</p>
 
     <ul id="log" class="log"></ul>
     <p id="log-latest" class="sr-only" aria-live="polite"></p>
@@ -72,8 +90,19 @@
       <p class="small"><a href="privacy.html">Privacy</a></p>
     </section>
 
+    <p class="muted">3D view uses three.js r160 (MIT licence), loaded from jsDelivr.</p>
     <footer>Game in development. Made with AI-written code.</footer>
   </main>
+
+  <div id="hero" class="hero-screen" role="dialog" aria-label="Choose your hero" hidden>
+    <h2>Choose your hero</h2>
+    <label for="hero-name">Name</label>
+    <input id="hero-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Hero">
+    <div id="class-cards" class="class-cards"></div>
+    <p class="small muted">Saved on this device only. No account, no password. Same daily tower for every class.</p>
+    <button id="hero-start" type="button" class="start">Start</button>
+    <button id="hero-cancel" type="button" class="restart" hidden>Cancel</button>
+  </div>
   <script type="module" src="js/main.js"></script>
   <script type="module" src="js/support.js"></script>
 </body>

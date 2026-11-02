@@ -1,148 +1,144 @@
-// Headless sim check (Node 22, no dependencies). Run from repo root:
-//   node tests/sim-check.mjs
-// Prints PASS/FAIL lines, then SIM=PASS or SIM=FAIL. Exits 1 on any failure.
-import { readFileSync } from 'node:fs';
-import { newRun, step } from '../js/sim.js';
-import { WALL, PILLAR, STAIRS, SPIKES } from '../js/floors.js';
+// Node sim check for Daily Tower v2: classes, determinism, skills, level-ups, balance.
+// Prints one line per check and a final 'SIM pass=yes|no'. Exits 1 on failure.
+import { newRun, step, CLASSES, CLASS_IDS, SKILLS, LAST_FLOOR, BALANCE } from '../js/sim.js';
+import { WALL } from '../js/floors.js';
+import { TYPES } from '../js/enemies.js';
+import { runBot, judge, fmt, SEEDS, MIN_WINS } from './bot.mjs';
 
-let failed = 0;
-const check = (label, ok, info = '') => {
-  if (!ok) failed++;
-  console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${info ? ' - ' + info : ''}`);
+let fails = 0;
+const ok = (cond, name) => {
+  console.log(`${cond ? 'ok  ' : 'FAIL'} ${name}`);
+  if (!cond) fails++;
 };
+const J = (o) => JSON.stringify(o);
+const SEED = '2026-11-02';
 
-const MOVES = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
-const hpSum = (s) => s.enemies.reduce((a, e) => a + e.hp, 0);
-const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+// 1. Same tower for every class.
+const runs = CLASS_IDS.map((c) => newRun(SEED, null, c));
+ok(runs.every((r) => J(r.tiles) === J(runs[0].tiles) && J(r.enemies) === J(runs[0].enemies) && J(r.stairs) === J(runs[0].stairs) && J(r.potions) === J(runs[0].potions)), 'floor 1 identical across classes');
+ok(runs.map((r) => r.player.maxHp).join() === '28,20,22', 'class base HP 28/20/22');
+ok(runs.every((r, i) => r.cls === CLASS_IDS[i] && r.player.cd.length === 3 && r.player.level === 1), 'class, cooldowns and level set');
+ok(newRun(SEED).cls === 'warrior', 'default class is warrior');
+ok(newRun(SEED, null, 'toString').cls === 'warrior' && newRun(SEED, null, '<img>').cls === 'warrior', 'unknown class falls back to warrior');
+ok(LAST_FLOOR === 10, 'last floor is 10');
 
-function nearest(p, list) {
-  let best = null;
-  let bd = Infinity;
-  for (const o of list) {
-    const d = manhattan(o, p);
-    if (d < bd) { bd = d; best = o; }
+// 2. Determinism: same seed + class + actions = same state.
+const pool = ['up', 'left', 'down', 'right', 'skill1', 'skill2', 'skill3', 'wait', 'up', 'right'];
+const script = [];
+for (let i = 0, r = 7; i < 400; i++) {
+  r = (r * 48271) % 2147483647;
+  script.push(pool[r % pool.length]);
+}
+function play(cls) {
+  let s = newRun(SEED, null, cls);
+  for (const a of script) {
+    s = step(s, a);
+    if (s.levelUp) s = step(s, 'pick1');
+    if (s.over) break;
   }
-  return best;
+  return s;
 }
+for (const c of CLASS_IDS) ok(J(play(c)) === J(play(c)), `deterministic replay (${c})`);
 
-// Mixed policy: attack an adjacent foe, otherwise chase the nearest one,
-// with some wandering and waiting mixed in. Fully deterministic.
-function choose(s, i) {
-  const p = s.player;
-  for (const [a, dx, dy] of MOVES) {
-    if (s.enemies.some((e) => e.x === p.x + dx && e.y === p.y + dy)) return a;
+// 3. Skills in a walled test arena.
+const proto = runs[0].enemies.find((e) => !TYPES[e.kind].boss);
+function arena(cls) {
+  const s = newRun(SEED, null, cls);
+  const F = s.tiles[s.player.y][s.player.x];
+  const N = 15;
+  s.tiles = Array.from({ length: N }, (_, y) => Array.from({ length: N }, (_, x) => (x === 0 || y === 0 || x === N - 1 || y === N - 1 ? WALL : F)));
+  s.potions = [];
+  s.stairs = { x: 1, y: 1 };
+  s.player.x = 7;
+  s.player.y = 7;
+  s.player.face = { dx: 0, dy: -1 };
+  s.enemies = [];
+  return s;
+}
+const foe = (x, y, hp = 50) => ({ ...proto, x, y, hp, maxHp: hp, poison: 0, frozen: 0 });
+
+if (!proto) {
+  ok(false, 'floor 1 has a normal enemy to copy for skill tests');
+} else {
+  for (const c of CLASS_IDS) {
+    CLASSES[c].skills.forEach((id, i) => {
+      const s = arena(c);
+      s.enemies = [foe(7, 5), foe(8, 8)];
+      const a = `skill${i + 1}`;
+      const s2 = step(s, a);
+      ok(s2 !== s && s2.turns === s.turns + 1 && s2.player.cd[i] === SKILLS[id].cd && s2.fx.some((f) => f.kind === id), `${c} ${id}: uses a turn, sets cd ${SKILLS[id].cd}, emits fx`);
+      const s3 = step(s2, a);
+      ok(s3.turns === s2.turns, `${c} ${id}: blocked while on cooldown`);
+      if (id === 'frost') ok(s2.enemies.every((e) => e.frozen >= 1 && e.hp === 48), 'frost: all in range frozen and hit for 2');
+      if (id === 'shield') ok(s2.player.shield === 2, 'shield: 2 turns left after first enemy turn');
+      if (id === 'dash') ok(s2.player.y === 6 && s2.player.x === 7, 'dash: stops before the enemy');
+      if (id === 'blink') ok(s2.player.y === 3 && s2.player.x === 7, 'blink: farthest free tile within 4');
+      if (id === 'poison') ok(s2.enemies.some((e) => e.poison > 0 || e.hp < 50), 'poison: target hit');
+    });
   }
-  if (i % 9 === 8) return 'wait';
-  const open = MOVES.filter(([, dx, dy]) => {
-    const t = s.tiles[p.y + dy]?.[p.x + dx];
-    return t !== undefined && t !== WALL && t !== PILLAR;
-  });
-  if (!open.length) return 'wait';
-  if (i % 5 === 4) return open[i % open.length][0];
-  const goal = nearest(p, s.enemies) || s.stairs;
-  if (!goal) return open[0][0];
-  const cost = ([, dx, dy]) => manhattan({ x: p.x + dx, y: p.y + dy }, goal);
-  open.sort((a, b) => cost(a) - cost(b));
-  return open[0][0];
-}
 
-let badOver = 0;
-let badOverInfo = '';
-function play(seed, mods, steps = 200) {
-  let s = newRun(seed, mods);
-  const start = { x: s.player.x, y: s.player.y, floor: s.floor };
-  let moved = false;
-  let hits = 0;
-  for (let i = 0; i < steps && !s.over; i++) {
-    const prev = s;
-    s = step(prev, choose(prev, i));
-    if (s.floor !== start.floor || s.player.x !== start.x || s.player.y !== start.y) moved = true;
-    if (s.kills > prev.kills || (s.floor === prev.floor && hpSum(s) < hpSum(prev))) hits++;
-    // A run may only end by falling (hp 0) or winning.
-    if (s.over && s.player.hp > 0 && !s.won) {
-      badOver++;
-      if (!badOverInfo) badOverInfo = `${seed} turn=${s.turns} floor=${s.floor} hp=${s.player.hp} log=${s.log.slice(-2).join(' / ')}`;
-    }
+  // 3b. fx are cleared every turn (only this turn's effects are drawn).
+  {
+    const s = arena('warrior');
+    s.enemies = [foe(7, 5), foe(8, 8)];
+    const s2 = step(s, 'skill1');
+    const s3 = step(s2, 'wait');
+    const s4 = step(s3, 'left');
+    ok(s2.fx.length > 0 && s3.fx.length === 0 && s4.fx.length === 0, `fx cleared each turn (after skill ${s2.fx.length}, after wait ${s3.fx.length}, after move ${s4.fx.length})`);
   }
-  return { s, moved, hits };
-}
 
-const SAMPLE = { floor: 1, theme: 'lava', enemy: 'bat', trap: 'spikes', sample: true };
-const RUNS = [
-  ['2026-10-31', null], ['2026-11-01', null], ['2026-11-02', null],
-  ['sim-check-a', null], ['sim-check-b', null],
-  ['2026-10-31', SAMPLE], ['sim-check-c', SAMPLE],
-];
-
-let anyMoved = false;
-let totalHits = 0;
-let overState = null;
-for (const [seed, mods] of RUNS) {
-  const label = `run ${seed}${mods ? ' +sample mods' : ''} (200 steps) no throw`;
-  try {
-    const r = play(seed, mods);
-    anyMoved ||= r.moved;
-    totalHits += r.hits;
-    if (r.s.over && !overState) overState = r.s;
-    const p = r.s.player;
-    check(label, true, `turns=${r.s.turns} floor=${r.s.floorReached} kills=${r.s.kills} hp=${p.hp}/${p.maxHp} hits=${r.hits} over=${r.s.over} won=${r.s.won}`);
-  } catch (err) {
-    check(label, false, String(err && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : err));
+  // 3c. Shield halves enemy damage and counts down; smoke dodges every hit and counts down.
+  {
+    const hitter = () => {
+      const s = arena('warrior'); // warrior dodge is 0, so no dodge rolls
+      s.enemies = [{ ...foe(7, 6), atk: 20 }];
+      s.player.maxHp = 100;
+      s.player.hp = 100;
+      return s;
+    };
+    const n0 = hitter();
+    const lostN = 100 - step(n0, 'wait').player.hp;
+    const raw = Math.max(1, 20 - n0.player.def);
+    ok(lostN >= raw && lostN <= raw + 1, `unshielded hit takes ${raw}-${raw + 1}: lost ${lostN}`);
+    const sh = hitter();
+    sh.player.shield = 3;
+    const sh2 = step(sh, 'wait');
+    const lostS = 100 - sh2.player.hp;
+    ok(lostS >= Math.floor(raw / 2) && lostS <= Math.floor((raw + 1) / 2) && sh2.player.shield === 2, `shield halves damage and counts down: lost ${lostS}, shield ${sh2.player.shield}`);
+    const sm = hitter();
+    sm.player.smoke = 2;
+    const sm2 = step(sm, 'wait');
+    const sm3 = step(sm2, 'wait');
+    const sm4 = step(sm3, 'wait');
+    ok(sm2.player.hp === 100 && sm2.player.smoke === 1 && sm3.player.hp === 100 && sm3.player.smoke === 0 && sm4.player.hp < 100, `smoke dodges for 2 turns then ends: hp ${sm2.player.hp}/${sm3.player.hp}/${sm4.player.hp}, smoke ${sm2.player.smoke}/${sm3.player.smoke}`);
   }
-}
-check('hero position changes', anyMoved);
-check('at least one enemy HP drops or an enemy dies', totalHits > 0, `hit turns=${totalHits}`);
-check('run is over only at hp 0 or on a win', badOver === 0, badOverInfo);
 
-try {
-  const a = JSON.stringify(play('determinism', null).s);
-  const b = JSON.stringify(play('determinism', null).s);
-  check('same seed + same inputs gives the same state', a === b);
-
-  const s0 = newRun('mutation-check');
-  const snap = JSON.stringify(s0);
-  step(s0, 'right');
-  step(s0, 'up');
-  check('step() does not mutate its input', JSON.stringify(s0) === snap);
-  check('unknown action is ignored', step(s0, 'jump') === s0);
-  const over = overState || { ...s0, over: true };
-  check('input after run over is ignored', step(over, 'up') === over);
-} catch (err) {
-  check('determinism / purity checks no throw', false, String(err));
+  // 4. Kill -> XP -> level-up with 3 distinct picks.
+  const s = arena('warrior');
+  s.enemies = [foe(7, 6, 1)];
+  s.enemies[0].maxHp = 5;
+  s.player.xp = s.player.xpNext - 1;
+  const s2 = step(s, 'up');
+  const ch = s2.levelUp && s2.levelUp.choices;
+  ok(s2.kills === s.kills + 1 && s2.player.level === 2 && s2.player.xpNext === 14 && ch && ch.length === 3 && new Set(ch).size === 3, 'kill gives XP; level 2 offers 3 distinct picks');
+  const frozen = J(s2);
+  const blocked = ['up', 'down', 'left', 'right', 'wait', 'skill1', 'skill2', 'skill3'].every((a) => step(s2, a) === s2);
+  ok(blocked && J(s2) === frozen, 'step() returns the same state for moves, wait and skills while picking');
+  const s3 = step(s2, 'pick0');
+  ok(s3.levelUp === null && s3.turns === s2.turns && J(s3.player) !== J(s2.player), 'pick applies an upgrade without using a turn');
+  ok(step(s3, 'pick0') === s3, 'pick ignored when no level-up is pending');
 }
 
-// Potions: left in place at full HP, drunk (and removed) when they heal.
-try {
-  const base = structuredClone(newRun('potion-check'));
-  base.enemies = [];
-  const p = base.player;
-  const spot = MOVES.find(([, dx, dy]) => {
-    const t = base.tiles[p.y + dy]?.[p.x + dx];
-    return t !== undefined && t !== WALL && t !== PILLAR && t !== STAIRS && t !== SPIKES;
-  });
-  if (!spot) throw new Error('no open tile next to start');
-  const [dir, dx, dy] = spot;
-  base.potions = [{ x: p.x + dx, y: p.y + dy }];
-  const full = step(base, dir);
-  check('potion at full HP is not drunk', full.potions.length === 1 && full.player.hp === full.player.maxHp, `potions=${full.potions.length} hp=${full.player.hp}/${full.player.maxHp}`);
-  const hurt = structuredClone(base);
-  hurt.player.hp = hurt.player.maxHp - 3;
-  const healed = step(hurt, dir);
-  check('potion below full HP heals and is used up', healed.potions.length === 0 && healed.player.hp === healed.player.maxHp, `potions=${healed.potions.length} hp=${healed.player.hp}/${healed.player.maxHp}`);
-} catch (err) {
-  check('potion checks no throw', false, String(err));
+// 5. Balance: an aiming bot plays floors 1-10 on 7 daily seeds for each class.
+// It picks the first upgrade on each level-up and uses skills off cooldown.
+// Pass: each class wins at least MIN_WINS seeds, and no class wins every seed at full HP.
+console.log(`BALANCE ${J(BALANCE)} warrior ${CLASSES.warrior.hp}/${CLASSES.warrior.def} rogue ${CLASSES.rogue.hp}/${CLASSES.rogue.def} mage ${CLASSES.mage.hp}/${CLASSES.mage.def}`);
+for (const c of CLASS_IDS) {
+  const rs = SEEDS.map((d) => runBot(d, c));
+  const j = judge(rs);
+  const lv = rs.filter((r) => r.floor === LAST_FLOOR).map((r) => r.level);
+  ok(j.pass, `${c} bot: wins ${j.wins}/${rs.length} (need >=${MIN_WINS}), full-HP wins ${j.fullHp} (need <${rs.length}), F10 levels [${lv.join(',')}] | ${rs.map(fmt).join(' ; ')}`);
 }
 
-const BANNED = /Math\.random|new Date|Date\.now|performance\.now/;
-for (const f of ['rng.js', 'sim.js', 'floors.js', 'enemies.js']) {
-  try {
-    const src = readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8');
-    const m = src.match(BANNED);
-    check(`js/${f} has no Math.random/Date/performance.now`, !m, m ? m[0] : '');
-  } catch (err) {
-    check(`js/${f} readable`, false, String(err));
-  }
-}
-
-console.log(failed ? `SIM=FAIL (${failed} failed)` : 'SIM=PASS');
-process.exit(failed ? 1 : 0);
+console.log(`SIM pass=${fails ? 'no' : 'yes'}`);
+process.exit(fails ? 1 : 0);

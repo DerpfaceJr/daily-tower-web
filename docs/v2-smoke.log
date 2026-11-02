@@ -1,0 +1,47 @@
+ok   warrior: hero screen visible on first visit
+ok   warrior: hero screen closes after Start
+ok   warrior: name sanitised and set as text :: name=Testbxb children=0
+ok   warrior: HUD shows class
+ok   warrior: hero saved in localStorage :: {"v":1,"name":"Testbxb","cls":"warrior"}
+ok   warrior: no tip UI on /
+ok   warrior: skill 1 shows a cooldown number :: 1/Q Cleave 4
+ok   warrior: HUD or log changed after keys :: You enter the Daily Tower. Floor 1.You Cleave the air.
+ok   warrior: WebGL canvas non-blank :: distinct colours=167
+ok   warrior: returning player skips hero screen
+ok   warrior: 0 console errors
+ok   warrior: 0 CSP violations
+ok   rogue: hero screen visible on first visit
+ok   rogue: hero screen closes after Start
+ok   rogue: name sanitised and set as text :: name=Testbxb children=0
+ok   rogue: HUD shows class
+ok   rogue: hero saved in localStorage :: {"v":1,"name":"Testbxb","cls":"rogue"}
+ok   rogue: no tip UI on /
+ok   rogue: skill 1 shows a cooldown number :: 1/Q Dash 5
+ok   rogue: HUD or log changed after keys :: You enter the Daily Tower. Floor 1.You Dash!
+ok   rogue: WebGL canvas non-blank :: distinct colours=164
+ok   rogue: returning player skips hero screen
+ok   rogue: 0 console errors
+ok   rogue: 0 CSP violations
+ok   mage: hero screen visible on first visit
+ok   mage: hero screen closes after Start
+ok   mage: name sanitised and set as text :: name=Testbxb children=0
+ok   mage: HUD shows class
+ok   mage: hero saved in localStorage :: {"v":1,"name":"Testbxb","cls":"mage"}
+ok   mage: no tip UI on /
+ok   mage: skill 1 shows a cooldown number :: 1/Q Fireball 4
+ok   mage: HUD or log changed after keys :: You enter the Daily Tower. Floor 1.The Fireball fizzles.
+ok   mage: WebGL canvas non-blank :: distinct colours=171
+ok   mage: returning player skips hero screen
+ok   mage: 0 console errors
+ok   mage: 0 CSP violations
+ok   tiptest: #support visible
+ok   tiptest: 3 Stripe TEST links :: https://donate.stripe.com/test_7sY8wPgOQ0Vy4gx4SR4Ja00 https://donate.stripe.com/test_3cI9AT7egbAc4gxdpn4Ja01 https://donate.stripe.com/test_fZu00jgOQ5bO8wNgBz4Ja02
+ok   tiptest: TEST MODE label
+ok   tiptest: HYPOTHESIS note
+ok   tiptest: 0 console errors
+ok   thanks: thank-you line visible
+ok   thanks: URL keeps ?x=1#h :: http://localhost:8000/?x=1#h
+ok   thanks: 0 console errors
+ok   3d.html redirects to / :: http://localhost:8000/
+ok   3d.html: canvas present after redirect
+SMOKE pass=yes
