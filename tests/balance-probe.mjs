@@ -1,30 +1,27 @@
-// Temp probe: run the bot under each tuning step, in the owner's order.
-import { BALANCE, CLASS_IDS, LAST_FLOOR } from '../js/sim.js';
-import { generateFloor } from '../js/floors.js';
-import { TYPES } from '../js/enemies.js';
+// Temp probe 2: aimed-skill bot and mage base-stat variants.
+import { BALANCE, CLASSES, CLASS_IDS } from '../js/sim.js';
 import { runBot, judge, fmt, SEEDS } from './bot.mjs';
 
-for (const d of SEEDS) {
-  const w = generateFloor(d, LAST_FLOOR, null).enemies.filter((e) => TYPES[e.kind].boss);
-  const n = generateFloor(d, LAST_FLOOR, null).enemies.length;
-  console.log(`warden ${d}: ${w.map((e) => `hp${e.hp} atk${e.atk} def${e.def}`).join(',')} enemiesOnF10=${n}`);
-}
 const VARIANTS = [
-  { skillScale: false, atkEvery: 0, wardenPct: 100 },
-  { skillScale: true, atkEvery: 0, wardenPct: 100 },
-  { skillScale: true, atkEvery: 2, wardenPct: 100 },
-  { skillScale: true, atkEvery: 2, wardenPct: 88 },
-  { skillScale: true, atkEvery: 2, wardenPct: 85 },
+  { name: 'dumb bot, scale+atk2, mage 17/0', b: { skillScale: true, atkEvery: 2, wardenPct: 100 }, mage: [17, 0], smart: false },
+  { name: 'smart bot, scale only, mage 17/0', b: { skillScale: true, atkEvery: 0, wardenPct: 100 }, mage: [17, 0], smart: true },
+  { name: 'smart bot, scale+atk2, mage 17/0', b: { skillScale: true, atkEvery: 2, wardenPct: 100 }, mage: [17, 0], smart: true },
+  { name: 'smart bot, scale+atk2, mage 22/1', b: { skillScale: true, atkEvery: 2, wardenPct: 100 }, mage: [22, 1], smart: true },
+  { name: 'smart bot, scale+atk2, mage 24/1', b: { skillScale: true, atkEvery: 2, wardenPct: 100 }, mage: [24, 1], smart: true },
+  { name: 'smart bot, scale+atk2, warden88, mage 22/1', b: { skillScale: true, atkEvery: 2, wardenPct: 88 }, mage: [22, 1], smart: true },
 ];
 for (const v of VARIANTS) {
-  Object.assign(BALANCE, v);
-  console.log(`== variant ${JSON.stringify(v)}`);
+  Object.assign(BALANCE, v.b);
+  CLASSES.mage.hp = v.mage[0];
+  CLASSES.mage.def = v.mage[1];
+  console.log(`== ${v.name}`);
   let all = true;
   for (const c of CLASS_IDS) {
-    const rs = SEEDS.map((d) => runBot(d, c));
+    const rs = SEEDS.map((d) => runBot(d, c, v.smart));
     const j = judge(rs);
     all = all && j.pass;
-    console.log(`${c}: wins ${j.wins}/${rs.length} fullHpWins ${j.fullHp} pass=${j.pass} | ${rs.map(fmt).join(' ; ')}`);
+    const lv = rs.filter((r) => r.floor === 10).map((r) => r.level);
+    console.log(`${c}: wins ${j.wins}/${rs.length} fullHpWins ${j.fullHp} pass=${j.pass} F10levels=[${lv.join(',')}] | ${rs.map(fmt).join(' ; ')}`);
   }
   console.log(`variant pass=${all}`);
 }

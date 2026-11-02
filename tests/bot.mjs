@@ -1,7 +1,9 @@
 // Scripted bot for balance checks. Plays a whole run through step() only:
-// picks the first upgrade on each level-up, uses any skill that is off
-// cooldown when an enemy is within 2 tiles, hunts enemies for XP, then stairs.
-import { newRun, step, LAST_FLOOR } from '../js/sim.js';
+// picks the first upgrade on each level-up, uses a skill that is off cooldown
+// when an enemy is within 2 tiles, hunts enemies for XP, then takes the stairs.
+// smart=true: aimed skills (fireball, poison) fire only when an enemy is in the
+// facing line, and movement skills (dash, blink) are not used as attacks.
+import { newRun, step, LAST_FLOOR, CLASSES } from '../js/sim.js';
 import { WALL, PILLAR, STAIRS } from '../js/floors.js';
 
 export const SEEDS = ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'];
@@ -11,6 +13,24 @@ const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 function tile(s, x, y) {
   const r = s.tiles[y];
   return r && r[x] !== undefined ? r[x] : WALL;
+}
+
+const AIM = { fireball: 6, poison: 2 };
+function rayHits(s, n) {
+  const p = s.player;
+  const { dx, dy } = p.face;
+  for (let k = 1; k <= n; k++) {
+    const x = p.x + dx * k, y = p.y + dy * k;
+    const t = tile(s, x, y);
+    if (t === WALL || t === PILLAR) return false;
+    if (s.enemies.some((e) => e.x === x && e.y === y)) return true;
+  }
+  return false;
+}
+function useful(s, id) {
+  if (AIM[id]) return rayHits(s, AIM[id]);
+  if (id === 'dash' || id === 'blink') return false;
+  return true;
 }
 
 // BFS from the player; returns the first move toward the nearest goal.
@@ -42,7 +62,7 @@ function firstMove(s, wantEnemy) {
   return null;
 }
 
-export function runBot(seed, cls, maxSteps = 6000) {
+export function runBot(seed, cls, smart = true, maxSteps = 6000) {
   let s = newRun(seed, null, cls);
   let floor = s.floor, floorTurns = 0;
   for (let n = 0; n < maxSteps && !s.over; n++) {
@@ -59,6 +79,7 @@ export function runBot(seed, cls, maxSteps = 6000) {
     if (s.enemies.some((e) => cheb(e, p) <= 2)) {
       for (let i = 0; i < 3 && next === s; i++) {
         if (p.cd[i] > 0) continue;
+        if (smart && !useful(s, CLASSES[s.cls].skills[i])) continue;
         const t = step(s, `skill${i + 1}`);
         if (t.turns !== s.turns) next = t;
       }
