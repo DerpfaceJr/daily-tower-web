@@ -25,6 +25,19 @@ async function open(path) {
 }
 const cspErrors = (errs) => errs.filter((e) => /Content Security Policy|Refused to/i.test(e));
 
+// Wait until the HUD HP is filled in. Polls from Node (no page.waitForFunction),
+// so the game's CSP never has to allow unsafe-eval.
+async function waitHud(page, timeout = 25000) {
+  const end = Date.now() + timeout;
+  let last = null;
+  while (Date.now() < end) {
+    last = await page.locator('#hp').textContent({ timeout: 1000 }).catch(() => null);
+    if (last !== null && last !== '-') return;
+    await page.waitForTimeout(150);
+  }
+  throw new Error(`timeout ${timeout}ms waiting for #hp to leave '-' (last=${last})`);
+}
+
 async function canvasColors(page) {
   return page.evaluate(() => {
     const c = document.getElementById('game');
@@ -49,7 +62,7 @@ try {
       await page.fill('#hero-name', 'Test<b>x</b>');
       await page.click(`.class-card[data-cls="${cls}"]`);
       await page.click('#hero-start');
-      await page.waitForFunction(() => document.getElementById('hp').textContent !== '-', null, { timeout: 25000 });
+      await waitHud(page);
       ok(`${cls}: hero screen closes after Start`, !(await page.isVisible('#hero')));
       const name = await page.textContent('#hero-label');
       const tags = await page.evaluate(() => document.getElementById('hero-label').children.length);
@@ -76,7 +89,7 @@ try {
       ok(`${cls}: WebGL canvas non-blank`, colors > 4, `distinct colours=${colors}`);
       await page.screenshot({ path: `docs/v2-${cls}.png` });
       await page.reload({ waitUntil: 'load' });
-      await page.waitForFunction(() => document.getElementById('hp').textContent !== '-', null, { timeout: 25000 });
+      await waitHud(page);
       ok(`${cls}: returning player skips hero screen`, !(await page.isVisible('#hero')));
       ok(`${cls}: 0 console errors`, errors.length === 0, errors.join(' | '));
       ok(`${cls}: 0 CSP violations`, cspErrors(errors).length === 0);
