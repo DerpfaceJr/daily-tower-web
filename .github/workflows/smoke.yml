@@ -1,9 +1,11 @@
 name: tips-smoke
 
-# Browser smoke test for the TEST-mode tip code.
-# Manual only (workflow_dispatch). It never commits or pushes anything:
-# results are uploaded as a run artifact, so nothing lands on main or gh-pages.
+# Browser smoke tests. On classes-staging it runs on every push and commits
+# results to docs/ on THAT branch only, with [skip ci]. Elsewhere it is manual
+# and never commits. Never touches main or gh-pages.
 on:
+  push:
+    branches: [classes-staging]
   workflow_dispatch:
     inputs:
       pay:
@@ -12,7 +14,7 @@ on:
         default: false
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tips-smoke-${{ github.ref }}
@@ -21,13 +23,21 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Sim check (node)
+        id: sim
+        continue-on-error: true
+        run: |
+          mkdir -p docs
+          node tests/sim-check.mjs 2>&1 | tee docs/sim.log
+          exit ${PIPESTATUS[0]}
 
       - name: Install Playwright Chromium (CI only, not saved to the repo)
         run: |
@@ -40,29 +50,43 @@ jobs:
           python3 -m http.server 8000 > /tmp/http.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:8000/ > /dev/null && break; sleep 1; done
 
-      - name: Smoke checks a-d
-        id: smoke
+      - name: Tips smoke (existing checks a-d)
+        id: tips
         continue-on-error: true
         run: |
-          node tests/tips-smoke.mjs 2>&1 | tee docs/smoke.log
+          node tests/tips-smoke.mjs 2>&1 | tee docs/tips-smoke.log
+          exit ${PIPESTATUS[0]}
+
+      - name: v2 smoke (hero screen, classes, skills, 3D canvas, tip gating)
+        id: v2
+        continue-on-error: true
+        run: |
+          node tests/v2-smoke.mjs 2>&1 | tee docs/v2-smoke.log
           exit ${PIPESTATUS[0]}
 
       - name: Optional Stripe TEST-mode payment (only if asked and smoke passed, non-blocking)
-        if: steps.smoke.outcome == 'success' && inputs.pay
+        if: steps.tips.outcome == 'success' && inputs.pay
         continue-on-error: true
         timeout-minutes: 4
         run: node tests/tip-pay.mjs 2>&1 | tee docs/pay.log
 
-      - name: Upload results as a run artifact (nothing is committed)
+      - name: Upload results as a run artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tips-smoke-results
-          path: |
-            docs/smoke*
-            docs/pay*
+          name: smoke-results
+          path: docs/
           if-no-files-found: warn
 
-      - name: Fail the job if any smoke check failed
-        if: steps.smoke.outcome != 'success'
+      - name: Commit results to classes-staging only ([skip ci])
+        if: always() && github.ref == 'refs/heads/classes-staging'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git commit -m "Smoke results for ${GITHUB_SHA::8} (run ${{ github.run_id }}, sim=${{ steps.sim.outcome }}, tips=${{ steps.tips.outcome }}, v2=${{ steps.v2.outcome }}) [skip ci]" || echo "nothing to commit"
+          git push origin HEAD:classes-staging
+
+      - name: Fail the job if any check failed
+        if: steps.sim.outcome != 'success' || steps.tips.outcome != 'success' || steps.v2.outcome != 'success'
         run: exit 1
