@@ -1,0 +1,68 @@
+name: tips-smoke
+
+# Browser smoke test for the TEST-mode tip code.
+# Manual only (workflow_dispatch). It never commits or pushes anything:
+# results are uploaded as a run artifact, so nothing lands on main or gh-pages.
+on:
+  workflow_dispatch:
+    inputs:
+      pay:
+        description: 'Also try the optional Stripe TEST-mode $3 payment (card 4242)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tips-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright Chromium (CI only, not saved to the repo)
+        run: |
+          npm i --no-save --no-package-lock playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: Serve the repo locally
+        run: |
+          mkdir -p docs
+          python3 -m http.server 8000 > /tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/ > /dev/null && break; sleep 1; done
+
+      - name: Smoke checks a-d
+        id: smoke
+        continue-on-error: true
+        run: |
+          node tests/tips-smoke.mjs 2>&1 | tee docs/smoke.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Optional Stripe TEST-mode payment (only if asked and smoke passed, non-blocking)
+        if: steps.smoke.outcome == 'success' && inputs.pay
+        continue-on-error: true
+        timeout-minutes: 4
+        run: node tests/tip-pay.mjs 2>&1 | tee docs/pay.log
+
+      - name: Upload results as a run artifact (nothing is committed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tips-smoke-results
+          path: |
+            docs/smoke*
+            docs/pay*
+          if-no-files-found: warn
+
+      - name: Fail the job if any smoke check failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
