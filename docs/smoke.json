@@ -1,7 +1,7 @@
 {
   "SMOKE": "SMOKE pass=yes a_root_no_tip_ui=ok b_tiptest_shown=ok c_thanks_and_url=ok d_3d_loads=ok",
-  "sha": "cbbd6d53a02511a4ea088ca24d89b2aa0a1b663a",
-  "run_id": "41493330668",
+  "sha": "ad1f67d60dce2ec31697d62f165e70a649dc746f",
+  "run_id": "41494234305",
   "base": "http://localhost:8000",
   "checks": {
     "a_root_no_tip_ui": {

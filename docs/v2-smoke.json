@@ -1,7 +1,7 @@
 {
   "line": "SMOKE pass=yes",
   "pass": true,
-  "at": "2026-11-02T17:41:00.584Z",
+  "at": "2026-11-02T17:46:54.385Z",
   "results": [
     {
       "name": "warrior: hero screen visible on first visit",

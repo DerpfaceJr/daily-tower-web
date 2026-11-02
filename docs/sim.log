@@ -34,4 +34,7 @@ ok   kill gives XP; level 2 offers 3 distinct picks
 ok   moves and skills blocked while picking
 ok   pick applies an upgrade without using a turn
 ok   pick ignored when no level-up is pending
-SIM pass=yes
+FAIL warrior beats the Warden at level 1 (HP 46, DEF 5, no upgrades): won=false turns=17 hpLeft=0
+FAIL rogue beats the Warden at level 1 (HP 38, DEF 4, no upgrades): won=false turns=8 hpLeft=0
+FAIL mage beats the Warden at level 1 (HP 35, DEF 3, no upgrades): won=false turns=7 hpLeft=0
+SIM pass=no
