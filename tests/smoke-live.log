@@ -3,7 +3,7 @@ PASS [live] game starts (HUD filled in)
 INFO [live] today-label: SAMPLE FLOOR - not from a real comment
 PASS [live] canvas has non-blank pixels - painted=123904 colors=16 size=352x352
 PASS [live] input changes the game (HUD/log or canvas) - hud changed, canvas changed
-INFO [live] hud after: hp:20/20|floor:1|atk:5|log:You enter the Daily Tower. Floor 1.You defeat the slime!You defeat the slime!Full HP. You leave the potion for later.|run_over:false
+INFO [live] hud after: hp:20/20|floor:1|atk:5|log:Full HP. You leave the potion for later.The slime splats you for 2.You defeat the slime!The slime splats you for 1.You drink a potion (+3 HP).You defeat the slime!|run_over:false
 INFO [live] RUN_OVER=no (overlay hidden, run still going)
 PASS [live] no console or page errors - 0 error(s)
 SMOKE_LIVE=PASS
