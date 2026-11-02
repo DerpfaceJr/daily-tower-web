@@ -1,0 +1,5 @@
+PASS a_root_no_tip_ui: support_visible=false tip_visible=false console_errors=0 csp_violations=0
+PASS b_tiptest_shown: support_visible=true test_links=3/3 test_label=true hypothesis_note=true console_errors=0 csp_violations=0
+PASS c_thanks_and_url: thanks_visible=true url_after="?x=1#h" support_visible=false console_errors=0
+PASS d_3d_loads: canvas_count=1 console_errors=0
+SMOKE pass=yes a_root_no_tip_ui=ok b_tiptest_shown=ok c_thanks_and_url=ok d_3d_loads=ok

@@ -1,0 +1,24 @@
+{
+  "SMOKE": "SMOKE pass=yes a_root_no_tip_ui=ok b_tiptest_shown=ok c_thanks_and_url=ok d_3d_loads=ok",
+  "sha": "cbbd6d53a02511a4ea088ca24d89b2aa0a1b663a",
+  "run_id": "41493330668",
+  "base": "http://localhost:8000",
+  "checks": {
+    "a_root_no_tip_ui": {
+      "pass": true,
+      "detail": "support_visible=false tip_visible=false console_errors=0 csp_violations=0"
+    },
+    "b_tiptest_shown": {
+      "pass": true,
+      "detail": "support_visible=true test_links=3/3 test_label=true hypothesis_note=true console_errors=0 csp_violations=0"
+    },
+    "c_thanks_and_url": {
+      "pass": true,
+      "detail": "thanks_visible=true url_after=\"?x=1#h\" support_visible=false console_errors=0"
+    },
+    "d_3d_loads": {
+      "pass": true,
+      "detail": "canvas_count=1 console_errors=0"
+    }
+  }
+}

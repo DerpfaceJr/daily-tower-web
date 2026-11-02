@@ -1,0 +1,237 @@
+{
+  "line": "SMOKE pass=yes",
+  "pass": true,
+  "at": "2026-11-02T17:41:00.584Z",
+  "results": [
+    {
+      "name": "warrior: hero screen visible on first visit",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: hero screen closes after Start",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: name sanitised and set as text",
+      "ok": true,
+      "info": "name=Testbxb children=0"
+    },
+    {
+      "name": "warrior: HUD shows class",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: hero saved in localStorage",
+      "ok": true,
+      "info": "{\"v\":1,\"name\":\"Testbxb\",\"cls\":\"warrior\"}"
+    },
+    {
+      "name": "warrior: no tip UI on /",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: skill 1 shows a cooldown number",
+      "ok": true,
+      "info": "1/Q Cleave 4"
+    },
+    {
+      "name": "warrior: HUD or log changed after keys",
+      "ok": true,
+      "info": "You enter the Daily Tower. Floor 1.You Cleave the air."
+    },
+    {
+      "name": "warrior: WebGL canvas non-blank",
+      "ok": true,
+      "info": "distinct colours=167"
+    },
+    {
+      "name": "warrior: returning player skips hero screen",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: 0 console errors",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "warrior: 0 CSP violations",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: hero screen visible on first visit",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: hero screen closes after Start",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: name sanitised and set as text",
+      "ok": true,
+      "info": "name=Testbxb children=0"
+    },
+    {
+      "name": "rogue: HUD shows class",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: hero saved in localStorage",
+      "ok": true,
+      "info": "{\"v\":1,\"name\":\"Testbxb\",\"cls\":\"rogue\"}"
+    },
+    {
+      "name": "rogue: no tip UI on /",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: skill 1 shows a cooldown number",
+      "ok": true,
+      "info": "1/Q Dash 5"
+    },
+    {
+      "name": "rogue: HUD or log changed after keys",
+      "ok": true,
+      "info": "You enter the Daily Tower. Floor 1.You Dash!"
+    },
+    {
+      "name": "rogue: WebGL canvas non-blank",
+      "ok": true,
+      "info": "distinct colours=164"
+    },
+    {
+      "name": "rogue: returning player skips hero screen",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: 0 console errors",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "rogue: 0 CSP violations",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: hero screen visible on first visit",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: hero screen closes after Start",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: name sanitised and set as text",
+      "ok": true,
+      "info": "name=Testbxb children=0"
+    },
+    {
+      "name": "mage: HUD shows class",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: hero saved in localStorage",
+      "ok": true,
+      "info": "{\"v\":1,\"name\":\"Testbxb\",\"cls\":\"mage\"}"
+    },
+    {
+      "name": "mage: no tip UI on /",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: skill 1 shows a cooldown number",
+      "ok": true,
+      "info": "1/Q Fireball 4"
+    },
+    {
+      "name": "mage: HUD or log changed after keys",
+      "ok": true,
+      "info": "You enter the Daily Tower. Floor 1.The Fireball fizzles."
+    },
+    {
+      "name": "mage: WebGL canvas non-blank",
+      "ok": true,
+      "info": "distinct colours=171"
+    },
+    {
+      "name": "mage: returning player skips hero screen",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: 0 console errors",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "mage: 0 CSP violations",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "tiptest: #support visible",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "tiptest: 3 Stripe TEST links",
+      "ok": true,
+      "info": "https://donate.stripe.com/test_7sY8wPgOQ0Vy4gx4SR4Ja00 https://donate.stripe.com/test_3cI9AT7egbAc4gxdpn4Ja01 https://donate.stripe.com/test_fZu00jgOQ5bO8wNgBz4Ja02"
+    },
+    {
+      "name": "tiptest: TEST MODE label",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "tiptest: HYPOTHESIS note",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "tiptest: 0 console errors",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "thanks: thank-you line visible",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "thanks: URL keeps ?x=1#h",
+      "ok": true,
+      "info": "http://localhost:8000/?x=1#h"
+    },
+    {
+      "name": "thanks: 0 console errors",
+      "ok": true,
+      "info": ""
+    },
+    {
+      "name": "3d.html redirects to /",
+      "ok": true,
+      "info": "http://localhost:8000/"
+    },
+    {
+      "name": "3d.html: canvas present after redirect",
+      "ok": true,
+      "info": ""
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+ok   floor 1 identical across classes
+ok   class base HP 28/20/17
+ok   class, cooldowns and level set
+ok   default class is warrior
+ok   unknown class falls back to warrior
+ok   last floor is 10
+ok   deterministic replay (warrior)
+ok   deterministic replay (rogue)
+ok   deterministic replay (mage)
+ok   warrior cleave: uses a turn, sets cd 4, emits fx
+ok   warrior cleave: blocked while on cooldown
+ok   warrior shield: uses a turn, sets cd 8, emits fx
+ok   warrior shield: blocked while on cooldown
+ok   shield: 2 turns left after first enemy turn
+ok   warrior warcry: uses a turn, sets cd 10, emits fx
+ok   warrior warcry: blocked while on cooldown
+ok   rogue dash: uses a turn, sets cd 5, emits fx
+ok   rogue dash: blocked while on cooldown
+ok   dash: stops before the enemy
+ok   rogue poison: uses a turn, sets cd 6, emits fx
+ok   rogue poison: blocked while on cooldown
+ok   poison: target hit
+ok   rogue smoke: uses a turn, sets cd 9, emits fx
+ok   rogue smoke: blocked while on cooldown
+ok   mage fireball: uses a turn, sets cd 4, emits fx
+ok   mage fireball: blocked while on cooldown
+ok   mage frost: uses a turn, sets cd 7, emits fx
+ok   mage frost: blocked while on cooldown
+ok   frost: all in range frozen and hit for 2
+ok   mage blink: uses a turn, sets cd 8, emits fx
+ok   mage blink: blocked while on cooldown
+ok   blink: farthest free tile within 4
+ok   kill gives XP; level 2 offers 3 distinct picks
+ok   moves and skills blocked while picking
+ok   pick applies an upgrade without using a turn
+ok   pick ignored when no level-up is pending
+SIM pass=yes
