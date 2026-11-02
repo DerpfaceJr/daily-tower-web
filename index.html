@@ -55,8 +55,23 @@
       <p id="today-comment" class="muted"></p>
     </section>
 
+    <!-- Tips: Stripe TEST-mode Payment Links. Amounts ($3/$5/$10) are a price HYPOTHESIS. -->
+    <section id="support" class="support" aria-label="Support the tower" hidden>
+      <h2>Support the tower</h2>
+      <p id="tip-test-label" class="test-label">TEST MODE: no real money</p>
+      <p class="muted">Optional tip. It unlocks nothing and never changes your run. Payments are handled by Stripe.</p>
+      <div class="tips">
+        <a class="tip" data-tip="3" target="_blank" rel="noopener noreferrer">Tip $3</a>
+        <a class="tip" data-tip="5" target="_blank" rel="noopener noreferrer">Tip $5</a>
+        <a class="tip" data-tip="10" target="_blank" rel="noopener noreferrer">Tip $10</a>
+      </div>
+      <p id="tip-thanks" class="muted" hidden>Thanks for the tip! It unlocks nothing; the tower is the same for everyone.</p>
+      <p class="small"><a href="privacy.html">Privacy</a></p>
+    </section>
+
     <footer>Game in development. Made with AI-written code.</footer>
   </main>
   <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/support.js"></script>
 </body>
 </html>
