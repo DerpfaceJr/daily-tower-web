@@ -11,7 +11,17 @@ ok   warrior: returning player skips hero screen
 ok   warrior: 0 console errors
 ok   warrior: 0 CSP violations
 ok   rogue: hero screen visible on first visit
-FAIL rogue: flow completed :: page.waitForFunction: EvalError: Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'se
+ok   rogue: hero screen closes after Start
+ok   rogue: name sanitised and set as text :: name=Testbxb children=0
+ok   rogue: HUD shows class
+ok   rogue: hero saved in localStorage :: {"v":1,"name":"Testbxb","cls":"rogue"}
+ok   rogue: no tip UI on /
+ok   rogue: skill 1 shows a cooldown number :: 1/Q Dash 5
+ok   rogue: HUD or log changed after keys :: You enter the Daily Tower. Floor 1.You Dash!
+ok   rogue: WebGL canvas non-blank :: distinct colours=164
+ok   rogue: returning player skips hero screen
+ok   rogue: 0 console errors
+ok   rogue: 0 CSP violations
 ok   mage: hero screen visible on first visit
 ok   mage: hero screen closes after Start
 ok   mage: name sanitised and set as text :: name=Testbxb children=0
@@ -34,4 +44,4 @@ ok   thanks: URL keeps ?x=1#h :: http://localhost:8000/?x=1#h
 ok   thanks: 0 console errors
 ok   3d.html redirects to / :: http://localhost:8000/
 ok   3d.html: canvas present after redirect
-SMOKE pass=no
+SMOKE pass=yes
