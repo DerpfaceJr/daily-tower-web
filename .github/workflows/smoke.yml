@@ -1,0 +1,72 @@
+name: tips-smoke
+
+# Browser smoke test for the TEST-mode tip code. Runs on smoke-staging only.
+# Results are committed back to smoke-staging with GITHUB_TOKEN (does not trigger workflows),
+# the commit says [skip ci], and docs/ result paths are ignored, so it cannot recurse.
+# Never pushes to main or gh-pages.
+on:
+  push:
+    branches: [smoke-staging]
+    paths-ignore:
+      - 'docs/smoke*'
+      - 'docs/pay*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tips-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright Chromium (CI only, not saved to the repo)
+        run: |
+          npm i --no-save --no-package-lock playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: Serve the repo locally
+        run: |
+          mkdir -p docs
+          python3 -m http.server 8000 > /tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/ > /dev/null && break; sleep 1; done
+
+      - name: Smoke checks a-d
+        id: smoke
+        continue-on-error: true
+        run: |
+          node tests/tips-smoke.mjs 2>&1 | tee /tmp/smoke.log
+          code=${PIPESTATUS[0]}
+          cp /tmp/smoke.log docs/smoke.log
+          exit $code
+
+      - name: Optional Stripe TEST-mode payment (only if smoke passed, non-blocking)
+        if: steps.smoke.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 4
+        run: node tests/tip-pay.mjs 2>&1 | tee docs/pay.log
+
+      - name: Commit results to smoke-staging
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898332+github-actions[bot]@users.noreply.github.com"
+          for f in docs/smoke.json docs/smoke.log docs/smoke-root.png docs/smoke-tiptest.png docs/smoke-thanks.png docs/smoke-3d.png docs/pay.json docs/pay.log docs/pay-form.png docs/pay-end.png; do
+            [ -e "$f" ] && git add -f "$f"
+          done
+          git commit -m "Smoke results for ${GITHUB_SHA::8} (run ${GITHUB_RUN_ID}, smoke=${{ steps.smoke.outcome }}) [skip ci]" || echo "nothing to commit"
+          git push origin HEAD:smoke-staging
+
+      - name: Fail the job if any smoke check failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
