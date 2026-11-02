@@ -85,6 +85,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs
           git commit -m "Smoke results for ${GITHUB_SHA::8} (run ${{ github.run_id }}, sim=${{ steps.sim.outcome }}, tips=${{ steps.tips.outcome }}, v2=${{ steps.v2.outcome }}) [skip ci]" || echo "nothing to commit"
+          git pull --rebase origin classes-staging
           git push origin HEAD:classes-staging
 
       - name: Fail the job if any check failed
