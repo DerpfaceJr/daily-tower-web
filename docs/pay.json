@@ -1,0 +1,17 @@
+{
+  "link": "https://donate.stripe.com/test_7sY8wPgOQ0Vy4gx4SR4Ja00",
+  "steps": [
+    "opened https://donate.stripe.com/test_7sY8wPgOQ0Vy4gx4SR4Ja00",
+    "missing input#customUnitAmount",
+    "filled input#email",
+    "filled input#cardNumber",
+    "filled input#cardExpiry",
+    "filled input#cardCvc",
+    "filled input#billingName",
+    "filled input#billingPostalCode",
+    "clicked pay",
+    "error: page.waitForURL: Timeout 60000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+  ],
+  "final_url": "https://donate.stripe.com/test_7sY8wPgOQ0Vy4gx4SR4Ja00",
+  "PAY": "PAY result=failed_no_redirect"
+}
