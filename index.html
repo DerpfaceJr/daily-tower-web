@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>Daily Tower</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -12,6 +13,7 @@
       <h1>Daily Tower</h1>
       <p class="seed" id="seed">Loading today's tower…</p>
       <p class="mode"><a href="3d.html">Try 3D</a> (experimental)</p>
+      <p id="tip-thanks" class="muted" role="status" hidden>Thanks for the tip! It unlocks nothing; the tower is the same for everyone.</p>
     </header>
 
     <section class="hud" aria-label="Status">
@@ -55,17 +57,18 @@
       <p id="today-comment" class="muted"></p>
     </section>
 
-    <!-- Tips: Stripe TEST-mode Payment Links. Amounts ($3/$5/$10) are a price HYPOTHESIS. -->
+    <!-- Tips: Stripe TEST-mode Payment Links. Amounts ($3/$5/$10) are a price HYPOTHESIS.
+         Hidden by default; js/support.js shows it only with ?tiptest=1 while TEST_MODE is true. -->
     <section id="support" class="support" aria-label="Support the tower" hidden>
       <h2>Support the tower</h2>
       <p id="tip-test-label" class="test-label">TEST MODE: no real money</p>
-      <p class="muted">Optional tip. It unlocks nothing and never changes your run. Payments are handled by Stripe.</p>
+      <p class="muted">Tips are optional, from adults only, and unlock nothing. A tip never changes your run. Payments are handled by Stripe.</p>
       <div class="tips">
         <a class="tip" data-tip="3" target="_blank" rel="noopener noreferrer">Tip $3</a>
         <a class="tip" data-tip="5" target="_blank" rel="noopener noreferrer">Tip $5</a>
         <a class="tip" data-tip="10" target="_blank" rel="noopener noreferrer">Tip $10</a>
       </div>
-      <p id="tip-thanks" class="muted" hidden>Thanks for the tip! It unlocks nothing; the tower is the same for everyone.</p>
+      <p class="small muted">Tip amounts are a price HYPOTHESIS under test.</p>
       <p class="small"><a href="privacy.html">Privacy</a></p>
     </section>
 
