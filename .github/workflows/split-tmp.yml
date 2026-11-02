@@ -1,0 +1,28 @@
+name: split-tmp
+on:
+  push:
+    branches: [sim-read-tmp]
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: split
+        run: |
+          mkdir -p tmp
+          for f in js/sim.js js/main.js tests/sim-check.mjs; do
+            b=$(basename "$f")
+            split -b 9000 -d -a 1 "$f" "tmp/$b.part"
+          done
+          for p in tmp/*.part*; do mv "$p" "$p.txt"; done
+          wc -c js/sim.js js/main.js tests/sim-check.mjs > tmp/sizes.txt
+          ls tmp >> tmp/sizes.txt
+      - name: commit
+        run: |
+          git config user.name 'split-bot'
+          git config user.email 'split-bot@users.noreply.github.com'
+          git add tmp
+          git commit -m 'tmp chunks [skip ci]'
+          git push origin HEAD:sim-read-tmp
