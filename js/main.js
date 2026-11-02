@@ -72,13 +72,12 @@ function showToday(raw, why = "Today's floor: unavailable (default floor)") {
 }
 
 async function loadToday() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch('./floors/today.json', { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const raw = await res.json();
-    clearTimeout(timer);
     if (!raw || typeof raw !== 'object') throw new Error('bad shape');
     // Only today's file (or a labelled sample) changes the tower.
     if (raw.sample === true || raw.date === seed) {
@@ -92,6 +91,8 @@ async function loadToday() {
     // file:// or network failure: play with no modified floor.
     mods = null;
     showToday(null);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -126,6 +127,31 @@ function saveHero(h) {
   } catch (err) {
     // storage blocked: the hero lasts for this visit only
   }
+}
+
+// confirm() can be blocked (some in-app browsers throw, or return false at once
+// without showing a dialog). Then the player taps or presses again within 4 s.
+let armedKey = '';
+let armedAt = 0;
+function ask(key, msg) {
+  let yes = null;
+  try {
+    const t0 = Date.now();
+    yes = window.confirm(msg);
+    if (!yes && Date.now() - t0 < 50) yes = null; // no real dialog was shown
+  } catch (err) {
+    yes = null;
+  }
+  if (yes !== null) return yes;
+  const now = Date.now();
+  if (armedKey === key && now - armedAt < 4000) {
+    armedKey = '';
+    return true;
+  }
+  armedKey = key;
+  armedAt = now;
+  $('log-latest').textContent = `${msg} Tap again to confirm.`;
+  return false;
 }
 
 function buildClassCards() {
@@ -181,7 +207,7 @@ function startHero() {
 }
 
 function changeHero() {
-  if (state && !state.over && !confirm('Change hero? This restarts the run (same daily tower).')) return;
+  if (state && !state.over && !ask('hero', 'Change hero? This restarts the run (same daily tower).')) return;
   openHero();
 }
 
@@ -270,7 +296,7 @@ function restart() {
 // In-run restart: asks first unless the run is already over.
 function askRestart() {
   if (!state) return;
-  if (state.over || confirm('Restart the run from floor 1? (Same daily tower.)')) restart();
+  if (state.over || ask('restart', 'Restart the run from floor 1? (Same daily tower.)')) restart();
 }
 
 // Input is ignored while loading, on the hero screen or on the run-over screen.

@@ -1,7 +1,7 @@
-// Node sim check for Daily Tower v2: classes, determinism, skills, level-ups.
+// Node sim check for Daily Tower v2: classes, determinism, skills, level-ups, Warden.
 // Prints one line per check and a final 'SIM pass=yes|no'. Exits 1 on failure.
 import { newRun, step, CLASSES, CLASS_IDS, SKILLS, LAST_FLOOR } from '../js/sim.js';
-import { WALL } from '../js/floors.js';
+import { WALL, generateFloor } from '../js/floors.js';
 import { TYPES } from '../js/enemies.js';
 
 let fails = 0;
@@ -88,6 +88,48 @@ if (!proto) {
   const s3 = step(s2, 'pick0');
   ok(s3.levelUp === null && s3.turns === s2.turns && J(s3.player) !== J(s2.player), 'pick applies an upgrade without using a turn');
   ok(step(s3, 'pick0') === s3, 'pick ignored when no level-up is pending');
+}
+
+// 5. Each class beats the real floor-10 Warden at level 1 with no upgrades.
+// Only the takeStairs bonuses a player gets by floor 10 are applied:
+// +2 max HP per floor climbed (9) and +1 DEF on floors 3, 6 and 9. No old +1 ATK per floor.
+const bossKind = Object.keys(TYPES).find((k) => TYPES[k].boss);
+const warden0 = bossKind ? generateFloor(SEED, LAST_FLOOR, null).enemies.find((e) => e.kind === bossKind) : null;
+if (!warden0) {
+  ok(false, 'floor 10 has a Warden');
+} else {
+  const PLAN = { warrior: ['shield', 'cleave', 'warcry'], rogue: ['smoke', 'poison'], mage: ['frost', 'fireball'] };
+  for (const c of CLASS_IDS) {
+    let s = arena(c);
+    s.floor = LAST_FLOOR;
+    s.player.maxHp += 2 * (LAST_FLOOR - 1);
+    s.player.def += 3;
+    s.player.hp = s.player.maxHp;
+    s.enemies = [{ ...warden0, x: 7, y: 6, maxHp: warden0.maxHp ?? warden0.hp }];
+    const startHp = s.player.maxHp, startDef = s.player.def, t0 = s.turns;
+    const skills = CLASSES[c].skills;
+    for (let t = 0; t < 300 && !s.over; t++) {
+      const p = s.player;
+      const w = s.enemies.find((e) => e.kind === bossKind);
+      if (!w) break;
+      const ax = w.x - p.x, ay = w.y - p.y;
+      const mv = ax && (Math.abs(ax) >= Math.abs(ay) || !ay) ? (ax > 0 ? 'right' : 'left') : ay > 0 ? 'down' : 'up';
+      let next = s;
+      for (const id of PLAN[c] || []) {
+        const i = skills.indexOf(id);
+        if (i >= 0 && p.cd[i] === 0) {
+          next = step(s, `skill${i + 1}`);
+          if (next.turns !== s.turns) break;
+          next = s;
+        }
+      }
+      if (next.turns === s.turns) next = step(s, mv);
+      if (next.levelUp) next = step(next, 'pick0');
+      if (next === s) break;
+      s = next;
+    }
+    ok(s.won === true && s.player.level === 1, `${c} beats the Warden at level 1 (HP ${startHp}, DEF ${startDef}, no upgrades): won=${s.won} turns=${s.turns - t0} hpLeft=${s.player.hp}`);
+  }
 }
 
 console.log(`SIM pass=${fails ? 'no' : 'yes'}`);
