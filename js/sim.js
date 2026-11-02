@@ -16,11 +16,16 @@ const POISON_TICK = 2;
 const POISON_TURNS = 4;
 const LOG_MAX = 6;
 
+// Balance knobs, checked by the bot test in tests/sim-check.mjs (section 5).
+// skillScale: skills grow with the hero (ATK + 1 per 2 levels; flat hits = half of that).
+// atkEvery: +1 ATK when leaving every Nth floor (0 = off). wardenPct: Warden HP/ATK in %.
+export const BALANCE = { skillScale: true, atkEvery: 2, wardenPct: 100 };
+
 // Hero classes. Floors never depend on the class: same tower for everyone.
 export const CLASSES = {
   warrior: { name: 'Warrior', hp: 28, atk: 5, def: 2, crit: 0.05, dodge: 0, skills: ['cleave', 'shield', 'warcry'] },
   rogue: { name: 'Rogue', hp: 20, atk: 5, def: 1, crit: 0.25, dodge: 0.15, skills: ['dash', 'poison', 'smoke'] },
-  mage: { name: 'Mage', hp: 17, atk: 4, def: 0, crit: 0.1, dodge: 0.05, skills: ['fireball', 'frost', 'blink'] },
+  mage: { name: 'Mage', hp: 22, atk: 4, def: 1, crit: 0.1, dodge: 0.05, skills: ['fireball', 'frost', 'blink'] },
 };
 export const CLASS_IDS = Object.keys(CLASSES);
 export const isClass = (c) => typeof c === 'string' && Object.prototype.hasOwnProperty.call(CLASSES, c);
@@ -49,6 +54,9 @@ const UPGRADE_IDS = Object.keys(UPGRADES);
 
 export const xpFor = (level) => 8 + 6 * (level - 1);
 export const skillCd = (p, id) => Math.max(2, SKILLS[id].cd - (p.haste || 0));
+// Skill power scales with the hero; at level 1 it equals ATK.
+export const skillPower = (p) => p.atk + (BALANCE.skillScale ? Math.floor((p.level - 1) / 2) : 0);
+const skillFlat = (p) => (BALANCE.skillScale ? Math.max(2, Math.floor(skillPower(p) / 2)) : 2);
 
 function log(s, msg) {
   s.log.push(msg);
@@ -70,6 +78,19 @@ function tileAt(s, x, y) {
 }
 const blocked = (t) => t === WALL || t === PILLAR;
 
+// Copy floor enemies; the Warden is scaled by BALANCE.wardenPct.
+function floorEnemy(e) {
+  const o = { ...e, maxHp: e.maxHp ?? e.hp };
+  const t = TYPES[o.kind];
+  if (t && t.boss && BALANCE.wardenPct !== 100) {
+    const k = BALANCE.wardenPct / 100;
+    o.hp = Math.max(1, Math.round(o.hp * k));
+    o.maxHp = Math.max(1, Math.round(o.maxHp * k));
+    o.atk = Math.max(1, Math.round(o.atk * k));
+  }
+  return o;
+}
+
 function enterFloor(s, f) {
   const fl = generateFloor(s.seed, f, modsFor(s.mods, f));
   s.floor = f;
@@ -78,7 +99,7 @@ function enterFloor(s, f) {
   s.stairs = fl.stairs;
   s.theme = fl.theme;
   s.modded = fl.modded;
-  s.enemies = fl.enemies.map((e) => ({ ...e, maxHp: e.maxHp ?? e.hp }));
+  s.enemies = fl.enemies.map(floorEnemy);
   s.potions = fl.potions;
   s.player.x = fl.start.x;
   s.player.y = fl.start.y;
@@ -224,9 +245,10 @@ function hurtEnemy(s, rng, e, amount, verb) {
 function takeStairs(s) {
   if (s.floor < LAST_FLOOR) {
     const p = s.player;
-    // Levels replace the old +1 ATK per floor.
+    // Levels replace the old +1 ATK per floor; BALANCE.atkEvery adds some back.
     p.maxHp += 2;
     if (s.floor % 3 === 0) p.def += 1;
+    if (BALANCE.atkEvery > 0 && s.floor % BALANCE.atkEvery === 0) p.atk += 1;
     p.hp = Math.min(p.maxHp, p.hp + 2 + Math.floor(p.maxHp / 5));
     enterFloor(s, s.floor + 1);
     if (s.floor === LAST_FLOOR) log(s, 'Floor 10. The Warden awaits.');
@@ -280,7 +302,7 @@ const SKILL_FN = {
     log(s, hit.length ? 'You Cleave!' : 'You Cleave the air.');
     for (const e of hit) {
       if (s.over) break;
-      if (s.enemies.includes(e)) strike(s, rng, e, p.atk, 'Cleave hits');
+      if (s.enemies.includes(e)) strike(s, rng, e, skillPower(p), 'Cleave hits');
     }
     return true;
   },
@@ -335,7 +357,7 @@ const SKILL_FN = {
       if (e) {
         s.fx.push({ kind: 'poison', from: at(p), to: { x, y }, tiles });
         e.poison = POISON_TURNS;
-        strike(s, rng, e, p.atk, 'Your poisoned blade cuts');
+        strike(s, rng, e, skillPower(p), 'Your poisoned blade cuts');
         return true;
       }
     }
@@ -373,10 +395,10 @@ const SKILL_FN = {
       return true;
     }
     const splash = s.enemies.filter((e) => e !== target && cheb(e, target) === 1);
-    strike(s, rng, target, p.atk + 4, 'Your Fireball scorches');
+    strike(s, rng, target, skillPower(p) + 4, 'Your Fireball scorches');
     for (const e of splash) {
       if (s.over) break;
-      if (s.enemies.includes(e)) hurtEnemy(s, rng, e, 2, 'Flames lick');
+      if (s.enemies.includes(e)) hurtEnemy(s, rng, e, skillFlat(p), 'Flames lick');
     }
     return true;
   },
@@ -391,7 +413,7 @@ const SKILL_FN = {
       if (s.over) break;
       if (!s.enemies.includes(e)) continue;
       e.frozen = Math.max(e.frozen || 0, 2);
-      hurtEnemy(s, rng, e, 2, 'Frost bites');
+      hurtEnemy(s, rng, e, skillFlat(p), 'Frost bites');
     }
     return true;
   },
@@ -507,7 +529,7 @@ function enemiesAct(s, rng) {
     if (s.over) return;
     if (e.poison > 0) {
       e.poison--;
-      hurtEnemy(s, rng, e, POISON_TICK, 'Poison eats');
+      hurtEnemy(s, rng, e, Math.max(POISON_TICK, skillFlat(p)), 'Poison eats');
     }
   }
   for (const e of s.enemies) {

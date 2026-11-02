@@ -313,6 +313,12 @@ function act(action) {
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (heroOpen()) return; // typing a name never moves the hero
+  // Held keys auto-repeat: ignore repeats so holding R cannot arm and confirm
+  // a restart, and holding a key cannot burn turns or skip a level-up pick.
+  if (e.repeat) {
+    if (e.code === 'KeyR' || MOVE_KEYS[e.code] || SKILL_KEYS[e.code]) e.preventDefault();
+    return;
+  }
   if (e.code === 'KeyR') {
     e.preventDefault();
     askRestart();

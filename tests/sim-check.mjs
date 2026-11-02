@@ -1,8 +1,9 @@
-// Node sim check for Daily Tower v2: classes, determinism, skills, level-ups, Warden.
+// Node sim check for Daily Tower v2: classes, determinism, skills, level-ups, balance.
 // Prints one line per check and a final 'SIM pass=yes|no'. Exits 1 on failure.
-import { newRun, step, CLASSES, CLASS_IDS, SKILLS, LAST_FLOOR } from '../js/sim.js';
-import { WALL, generateFloor } from '../js/floors.js';
+import { newRun, step, CLASSES, CLASS_IDS, SKILLS, LAST_FLOOR, BALANCE } from '../js/sim.js';
+import { WALL } from '../js/floors.js';
 import { TYPES } from '../js/enemies.js';
+import { runBot, judge, fmt, SEEDS, MIN_WINS } from './bot.mjs';
 
 let fails = 0;
 const ok = (cond, name) => {
@@ -15,7 +16,7 @@ const SEED = '2026-11-02';
 // 1. Same tower for every class.
 const runs = CLASS_IDS.map((c) => newRun(SEED, null, c));
 ok(runs.every((r) => J(r.tiles) === J(runs[0].tiles) && J(r.enemies) === J(runs[0].enemies) && J(r.stairs) === J(runs[0].stairs) && J(r.potions) === J(runs[0].potions)), 'floor 1 identical across classes');
-ok(runs.map((r) => r.player.maxHp).join() === '28,20,17', 'class base HP 28/20/17');
+ok(runs.map((r) => r.player.maxHp).join() === '28,20,22', 'class base HP 28/20/22');
 ok(runs.every((r, i) => r.cls === CLASS_IDS[i] && r.player.cd.length === 3 && r.player.level === 1), 'class, cooldowns and level set');
 ok(newRun(SEED).cls === 'warrior', 'default class is warrior');
 ok(newRun(SEED, null, 'toString').cls === 'warrior' && newRun(SEED, null, '<img>').cls === 'warrior', 'unknown class falls back to warrior');
@@ -76,6 +77,42 @@ if (!proto) {
     });
   }
 
+  // 3b. fx are cleared every turn (only this turn's effects are drawn).
+  {
+    const s = arena('warrior');
+    s.enemies = [foe(7, 5), foe(8, 8)];
+    const s2 = step(s, 'skill1');
+    const s3 = step(s2, 'wait');
+    const s4 = step(s3, 'left');
+    ok(s2.fx.length > 0 && s3.fx.length === 0 && s4.fx.length === 0, `fx cleared each turn (after skill ${s2.fx.length}, after wait ${s3.fx.length}, after move ${s4.fx.length})`);
+  }
+
+  // 3c. Shield halves enemy damage and counts down; smoke dodges every hit and counts down.
+  {
+    const hitter = () => {
+      const s = arena('warrior'); // warrior dodge is 0, so no dodge rolls
+      s.enemies = [{ ...foe(7, 6), atk: 20 }];
+      s.player.maxHp = 100;
+      s.player.hp = 100;
+      return s;
+    };
+    const n0 = hitter();
+    const lostN = 100 - step(n0, 'wait').player.hp;
+    const raw = Math.max(1, 20 - n0.player.def);
+    ok(lostN >= raw && lostN <= raw + 1, `unshielded hit takes ${raw}-${raw + 1}: lost ${lostN}`);
+    const sh = hitter();
+    sh.player.shield = 3;
+    const sh2 = step(sh, 'wait');
+    const lostS = 100 - sh2.player.hp;
+    ok(lostS >= Math.floor(raw / 2) && lostS <= Math.floor((raw + 1) / 2) && sh2.player.shield === 2, `shield halves damage and counts down: lost ${lostS}, shield ${sh2.player.shield}`);
+    const sm = hitter();
+    sm.player.smoke = 2;
+    const sm2 = step(sm, 'wait');
+    const sm3 = step(sm2, 'wait');
+    const sm4 = step(sm3, 'wait');
+    ok(sm2.player.hp === 100 && sm2.player.smoke === 1 && sm3.player.hp === 100 && sm3.player.smoke === 0 && sm4.player.hp < 100, `smoke dodges for 2 turns then ends: hp ${sm2.player.hp}/${sm3.player.hp}/${sm4.player.hp}, smoke ${sm2.player.smoke}/${sm3.player.smoke}`);
+  }
+
   // 4. Kill -> XP -> level-up with 3 distinct picks.
   const s = arena('warrior');
   s.enemies = [foe(7, 6, 1)];
@@ -84,52 +121,23 @@ if (!proto) {
   const s2 = step(s, 'up');
   const ch = s2.levelUp && s2.levelUp.choices;
   ok(s2.kills === s.kills + 1 && s2.player.level === 2 && s2.player.xpNext === 14 && ch && ch.length === 3 && new Set(ch).size === 3, 'kill gives XP; level 2 offers 3 distinct picks');
-  ok(step(s2, 'up') === s2 && step(s2, 'skill1') === s2, 'moves and skills blocked while picking');
+  const frozen = J(s2);
+  const blocked = ['up', 'down', 'left', 'right', 'wait', 'skill1', 'skill2', 'skill3'].every((a) => step(s2, a) === s2);
+  ok(blocked && J(s2) === frozen, 'step() returns the same state for moves, wait and skills while picking');
   const s3 = step(s2, 'pick0');
   ok(s3.levelUp === null && s3.turns === s2.turns && J(s3.player) !== J(s2.player), 'pick applies an upgrade without using a turn');
   ok(step(s3, 'pick0') === s3, 'pick ignored when no level-up is pending');
 }
 
-// 5. Each class beats the real floor-10 Warden at level 1 with no upgrades.
-// Only the takeStairs bonuses a player gets by floor 10 are applied:
-// +2 max HP per floor climbed (9) and +1 DEF on floors 3, 6 and 9. No old +1 ATK per floor.
-const bossKind = Object.keys(TYPES).find((k) => TYPES[k].boss);
-const warden0 = bossKind ? generateFloor(SEED, LAST_FLOOR, null).enemies.find((e) => e.kind === bossKind) : null;
-if (!warden0) {
-  ok(false, 'floor 10 has a Warden');
-} else {
-  const PLAN = { warrior: ['shield', 'cleave', 'warcry'], rogue: ['smoke', 'poison'], mage: ['frost', 'fireball'] };
-  for (const c of CLASS_IDS) {
-    let s = arena(c);
-    s.floor = LAST_FLOOR;
-    s.player.maxHp += 2 * (LAST_FLOOR - 1);
-    s.player.def += 3;
-    s.player.hp = s.player.maxHp;
-    s.enemies = [{ ...warden0, x: 7, y: 6, maxHp: warden0.maxHp ?? warden0.hp }];
-    const startHp = s.player.maxHp, startDef = s.player.def, t0 = s.turns;
-    const skills = CLASSES[c].skills;
-    for (let t = 0; t < 300 && !s.over; t++) {
-      const p = s.player;
-      const w = s.enemies.find((e) => e.kind === bossKind);
-      if (!w) break;
-      const ax = w.x - p.x, ay = w.y - p.y;
-      const mv = ax && (Math.abs(ax) >= Math.abs(ay) || !ay) ? (ax > 0 ? 'right' : 'left') : ay > 0 ? 'down' : 'up';
-      let next = s;
-      for (const id of PLAN[c] || []) {
-        const i = skills.indexOf(id);
-        if (i >= 0 && p.cd[i] === 0) {
-          next = step(s, `skill${i + 1}`);
-          if (next.turns !== s.turns) break;
-          next = s;
-        }
-      }
-      if (next.turns === s.turns) next = step(s, mv);
-      if (next.levelUp) next = step(next, 'pick0');
-      if (next === s) break;
-      s = next;
-    }
-    ok(s.won === true && s.player.level === 1, `${c} beats the Warden at level 1 (HP ${startHp}, DEF ${startDef}, no upgrades): won=${s.won} turns=${s.turns - t0} hpLeft=${s.player.hp}`);
-  }
+// 5. Balance: an aiming bot plays floors 1-10 on 7 daily seeds for each class.
+// It picks the first upgrade on each level-up and uses skills off cooldown.
+// Pass: each class wins at least MIN_WINS seeds, and no class wins every seed at full HP.
+console.log(`BALANCE ${J(BALANCE)} warrior ${CLASSES.warrior.hp}/${CLASSES.warrior.def} rogue ${CLASSES.rogue.hp}/${CLASSES.rogue.def} mage ${CLASSES.mage.hp}/${CLASSES.mage.def}`);
+for (const c of CLASS_IDS) {
+  const rs = SEEDS.map((d) => runBot(d, c));
+  const j = judge(rs);
+  const lv = rs.filter((r) => r.floor === LAST_FLOOR).map((r) => r.level);
+  ok(j.pass, `${c} bot: wins ${j.wins}/${rs.length} (need >=${MIN_WINS}), full-HP wins ${j.fullHp} (need <${rs.length}), F10 levels [${lv.join(',')}] | ${rs.map(fmt).join(' ; ')}`);
 }
 
 console.log(`SIM pass=${fails ? 'no' : 'yes'}`);
