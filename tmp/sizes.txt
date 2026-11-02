@@ -1,0 +1,10 @@
+17274 js/sim.js
+12476 js/main.js
+ 6385 tests/sim-check.mjs
+36135 total
+main.js.part0.txt
+main.js.part1.txt
+sim-check.mjs.part0.txt
+sim.js.part0.txt
+sim.js.part1.txt
+sizes.txt

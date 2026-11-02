@@ -1,0 +1,116 @@
+st b = $(`pick${i}`);
+      b.querySelector('.pk-name').textContent = `${i + 1}. ${UPGRADES[id].name}`;
+      b.querySelector('.pk-text').textContent = UPGRADES[id].text;
+    });
+  }
+  const list = $('log');
+  list.replaceChildren();
+  for (const msg of state.log) {
+    const li = document.createElement('li');
+    li.textContent = msg;
+    list.appendChild(li);
+  }
+  const fresh = prevLog ? newLines(prevLog, state.log) : state.log;
+  if (fresh.length) $('log-latest').textContent = fresh.join(' ');
+}
+
+function showOver() {
+  const best = saveBest(state.floorReached);
+  const p = state.player;
+  $('levelup').hidden = true;
+  $('over-title').textContent = state.won ? 'Tower cleared!' : 'You fell';
+  $('over-hero').textContent = `${hero ? hero.name : 'Hero'} the ${CLASSES[state.cls].name}, level ${p.level}`;
+  $('over-floor').textContent = `Floor reached: ${state.floorReached}`;
+  $('over-turns').textContent = `Turns: ${state.turns}`;
+  $('over-kills').textContent = `Kills: ${state.kills}`;
+  $('over-best').textContent = best ? `Your best on this device today: floor ${best}` : '';
+  $('over').hidden = false;
+  $('retry').focus();
+}
+
+function restart() {
+  if (!hero) {
+    openHero();
+    return;
+  }
+  state = newRun(seed, mods, hero.cls);
+  $('over').hidden = true;
+  draw();
+}
+
+// In-run restart: asks first unless the run is already over.
+function askRestart() {
+  if (!state) return;
+  if (state.over || ask('restart', 'Restart the run from floor 1? (Same daily tower.)')) restart();
+}
+
+// Input is ignored while loading, on the hero screen or on the run-over screen.
+function act(action) {
+  if (!state || state.over || heroOpen()) return;
+  const prevLog = state.log;
+  const next = step(state, action);
+  if (next === state) return;
+  state = next;
+  draw(prevLog);
+  if (state.over) showOver();
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (heroOpen()) return; // typing a name never moves the hero
+  if (e.code === 'KeyR') {
+    e.preventDefault();
+    askRestart();
+    return;
+  }
+  if (!state || state.over) return;
+  const action = state.levelUp ? PICK_KEYS[e.code] : MOVE_KEYS[e.code] || SKILL_KEYS[e.code];
+  if (!action) return;
+  e.preventDefault();
+  act(action);
+});
+
+for (const btn of document.querySelectorAll('[data-act]')) {
+  btn.addEventListener('click', () => {
+    act(btn.dataset.act);
+    btn.blur(); // so Space does not re-click a focused button
+  });
+}
+$('retry').addEventListener('click', restart);
+$('restart').addEventListener('click', (e) => {
+  askRestart();
+  e.currentTarget.blur();
+});
+$('change-hero').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  changeHero();
+});
+$('hero-start').addEventListener('click', startHero);
+$('hero-cancel').addEventListener('click', () => {
+  if (hero) $('hero').hidden = true;
+});
+$('hero-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    startHero();
+  }
+});
+
+$('seed').textContent = `Tower of ${seed} (UTC)`;
+buildClassCards();
+hero = loadHero();
+if (hero) pickedCls = hero.cls;
+else openHero();
+
+const viewReady = import('./render3d.js')
+  .then((m) => {
+    paint = m.createRenderer(canvas);
+  })
+  .catch((err) => {
+    console.error('3D view failed to load:', err);
+    $('seed').textContent += ' · 3D view failed to load (WebGL or network).';
+  });
+Promise.all([viewReady, loadToday()]).then(() => {
+  ready = true;
+  if (hero && !heroOpen()) restart();
+});

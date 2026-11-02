@@ -1,0 +1,281 @@
+);
+    s.fx.push({ kind: 'cleave', from: at(p), to: at(p), tiles });
+    const hit = s.enemies.filter((e) => cheb(e, p) === 1);
+    log(s, hit.length ? 'You Cleave!' : 'You Cleave the air.');
+    for (const e of hit) {
+      if (s.over) break;
+      if (s.enemies.includes(e)) strike(s, rng, e, p.atk, 'Cleave hits');
+    }
+    return true;
+  },
+  shield(s) {
+    const p = s.player;
+    p.shield = 3;
+    s.fx.push({ kind: 'shield', from: at(p), to: at(p), tiles: [] });
+    log(s, 'You raise your Shield (3 turns).');
+    return true;
+  },
+  warcry(s) {
+    const p = s.player;
+    const heal = Math.min(Math.max(1, Math.floor(p.maxHp / 4)), p.maxHp - p.hp);
+    p.hp += heal;
+    const tiles = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) tiles.push({ x: p.x + dx, y: p.y + dy });
+    let n = 0;
+    for (const e of s.enemies) if (cheb(e, p) === 1) { e.frozen = Math.max(e.frozen || 0, 1); n++; }
+    s.fx.push({ kind: 'warcry', from: at(p), to: at(p), tiles });
+    log(s, `War Cry! +${heal} HP, ${n} stunned.`);
+    return true;
+  },
+  dash(s) {
+    const p = s.player;
+    const { dx, dy } = p.face;
+    let x = p.x, y = p.y;
+    const tiles = [];
+    for (let k = 0; k < 3; k++) {
+      const nx = x + dx, ny = y + dy;
+      if (blocked(tileAt(s, nx, ny)) || enemyAt(s, nx, ny)) break;
+      x = nx;
+      y = ny;
+      tiles.push({ x, y });
+    }
+    if (!tiles.length) {
+      log(s, 'No room to Dash.');
+      return false;
+    }
+    s.fx.push({ kind: 'dash', from: at(p), to: { x, y }, tiles });
+    log(s, 'You Dash!');
+    return landOn(s, x, y);
+  },
+  poison(s, rng) {
+    const p = s.player;
+    const { dx, dy } = p.face;
+    const tiles = [];
+    for (let k = 1; k <= 2; k++) {
+      const x = p.x + dx * k, y = p.y + dy * k;
+      if (blocked(tileAt(s, x, y))) break;
+      tiles.push({ x, y });
+      const e = enemyAt(s, x, y);
+      if (e) {
+        s.fx.push({ kind: 'poison', from: at(p), to: { x, y }, tiles });
+        e.poison = POISON_TURNS;
+        strike(s, rng, e, p.atk, 'Your poisoned blade cuts');
+        return true;
+      }
+    }
+    log(s, 'No target for Poison.');
+    return false;
+  },
+  smoke(s) {
+    const p = s.player;
+    p.smoke = 2;
+    s.fx.push({ kind: 'smoke', from: at(p), to: at(p), tiles: [] });
+    log(s, 'Smoke Bomb! You vanish for 2 turns.');
+    return true;
+  },
+  fireball(s, rng) {
+    const p = s.player;
+    const { dx, dy } = p.face;
+    let x = p.x, y = p.y, target = null;
+    const tiles = [];
+    for (let k = 1; k <= 6; k++) {
+      const nx = p.x + dx * k, ny = p.y + dy * k;
+      if (blocked(tileAt(s, nx, ny))) break;
+      x = nx;
+      y = ny;
+      tiles.push({ x, y });
+      target = enemyAt(s, x, y);
+      if (target) break;
+    }
+    if (!tiles.length) {
+      log(s, 'No room to cast Fireball.');
+      return false;
+    }
+    s.fx.push({ kind: 'fireball', from: at(p), to: { x, y }, tiles });
+    if (!target) {
+      log(s, 'The Fireball fizzles.');
+      return true;
+    }
+    const splash = s.enemies.filter((e) => e !== target && cheb(e, target) === 1);
+    strike(s, rng, target, p.atk + 4, 'Your Fireball scorches');
+    for (const e of splash) {
+      if (s.over) break;
+      if (s.enemies.includes(e)) hurtEnemy(s, rng, e, 2, 'Flames lick');
+    }
+    return true;
+  },
+  frost(s, rng) {
+    const p = s.player;
+    const tiles = [];
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (dx || dy) tiles.push({ x: p.x + dx, y: p.y + dy });
+    s.fx.push({ kind: 'frost', from: at(p), to: at(p), tiles });
+    const hit = s.enemies.filter((e) => cheb(e, p) <= 2);
+    log(s, `Frost Nova! ${hit.length} frozen.`);
+    for (const e of hit) {
+      if (s.over) break;
+      if (!s.enemies.includes(e)) continue;
+      e.frozen = Math.max(e.frozen || 0, 2);
+      hurtEnemy(s, rng, e, 2, 'Frost bites');
+    }
+    return true;
+  },
+  blink(s) {
+    const p = s.player;
+    const { dx, dy } = p.face;
+    let dest = null;
+    for (let k = 1; k <= 4; k++) {
+      const x = p.x + dx * k, y = p.y + dy * k;
+      if (!blocked(tileAt(s, x, y)) && !enemyAt(s, x, y)) dest = { x, y };
+    }
+    if (!dest) {
+      log(s, 'Nowhere to Blink.');
+      return false;
+    }
+    s.fx.push({ kind: 'blink', from: at(p), to: dest, tiles: [at(p), dest] });
+    log(s, 'You Blink!');
+    return landOn(s, dest.x, dest.y);
+  },
+};
+
+function useSkill(s, rng, i) {
+  const p = s.player;
+  const id = CLASSES[p.cls].skills[i];
+  if (!id || p.cd[i] > 0) return false;
+  const r = SKILL_FN[id](s, rng);
+  if (r) p.cd[i] = skillCd(p, id);
+  return r;
+}
+
+// false = no turn used, true = turn used, 'floor' = turn used, skip enemies.
+function playerAct(s, rng, action) {
+  if (action === 'wait') return true;
+  if (action.startsWith('skill')) return useSkill(s, rng, Number(action[5]) - 1);
+  const p = s.player;
+  const [dx, dy] = DELTA[action];
+  p.face = { dx, dy };
+  const x = p.x + dx, y = p.y + dy;
+  const foe = enemyAt(s, x, y);
+  if (foe) {
+    strike(s, rng, foe, p.atk, 'You hit');
+    return s.over ? 'floor' : true;
+  }
+  if (blocked(tileAt(s, x, y))) return false;
+  return landOn(s, x, y);
+}
+
+function canEnter(s, e, x, y) {
+  const tile = tileAt(s, x, y);
+  if (tile === WALL) return false;
+  if (tile === PILLAR && !TYPES[e.kind].phase) return false;
+  if (x === s.player.x && y === s.player.y) return false;
+  return !enemyAt(s, x, y);
+}
+
+// Greedy chase: pick the step that gets closest without moving away.
+function chase(s, e) {
+  const p = s.player;
+  let best = null;
+  let bestD = dist(e, p) + 1;
+  for (const [dx, dy] of DIRS) {
+    const x = e.x + dx, y = e.y + dy;
+    if (!canEnter(s, e, x, y)) continue;
+    const d = Math.abs(x - p.x) + Math.abs(y - p.y);
+    if (d < bestD) {
+      best = { x, y };
+      bestD = d;
+    }
+  }
+  if (best) {
+    e.x = best.x;
+    e.y = best.y;
+  }
+}
+
+// Erratic move: try directions in a seeded shuffled order.
+function flutter(s, rng, e) {
+  const dirs = DIRS.slice();
+  for (let i = dirs.length - 1; i > 0; i--) {
+    const j = randInt(rng, i + 1);
+    [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+  }
+  for (const [dx, dy] of dirs) {
+    if (canEnter(s, e, e.x + dx, e.y + dy)) {
+      e.x += dx;
+      e.y += dy;
+      return;
+    }
+  }
+}
+
+// Enemy attack on the player: smoke and dodge (seeded), then shield halves.
+function enemyHits(s, rng, e) {
+  const p = s.player;
+  const t = TYPES[e.kind];
+  if (p.smoke > 0 || (p.dodge > 0 && rng() < p.dodge)) {
+    log(s, `You dodge the ${t.name}.`);
+    return;
+  }
+  let amount = damage(rng, e.atk, p.def);
+  if (p.shield > 0) amount = Math.floor(amount / 2);
+  if (amount <= 0) {
+    log(s, `Your shield blocks the ${t.name}.`);
+    return;
+  }
+  hurtPlayer(s, amount, `The ${t.name} ${t.verb} you`);
+}
+
+function enemiesAct(s, rng) {
+  const p = s.player;
+  // Poison ticks first; poison kills count as kills.
+  for (const e of s.enemies.slice()) {
+    if (s.over) return;
+    if (e.poison > 0) {
+      e.poison--;
+      hurtEnemy(s, rng, e, POISON_TICK, 'Poison eats');
+    }
+  }
+  for (const e of s.enemies) {
+    if (s.over) return;
+    if (e.frozen > 0) {
+      e.frozen--;
+      continue;
+    }
+    const t = TYPES[e.kind];
+    if (dist(e, p) === 1) {
+      enemyHits(s, rng, e);
+    } else if (t.erratic && rng() < 0.5) {
+      flutter(s, rng, e);
+    } else {
+      chase(s, e);
+    }
+  }
+  if (p.shield > 0) p.shield--;
+  if (p.smoke > 0) p.smoke--;
+}
+
+export function step(state, action) {
+  if (!state || state.over || !ACTIONS.includes(action)) return state;
+  const isPick = action.startsWith('pick');
+  // While a level-up is pending only picks are accepted (restart is main.js).
+  if (state.levelUp ? !isPick : isPick) return state;
+  const s = structuredClone(state);
+  s.fx = [];
+  const rng = mulberry32(s.rng);
+  if (isPick) {
+    applyUpgrade(s, s.levelUp.choices[Number(action[4])]);
+    s.levelUp = null;
+    offerLevelUp(s, rng);
+    s.rng = rng.getState();
+    return s;
+  }
+  const used = action.startsWith('skill') ? Number(action[5]) - 1 : -1;
+  const acted = playerAct(s, rng, action);
+  if (acted) {
+    s.turns++;
+    const p = s.player;
+    p.cd = p.cd.map((c, i) => (i === used ? c : Math.max(0, c - 1)));
+    if (acted === true && !s.over) enemiesAct(s, rng);
+  }
+  s.rng = rng.getState();
+  return s;
+}
