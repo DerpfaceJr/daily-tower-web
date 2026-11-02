@@ -1,5 +1,5 @@
 ok   floor 1 identical across classes
-ok   class base HP 28/20/17
+ok   class base HP 28/20/22
 ok   class, cooldowns and level set
 ok   default class is warrior
 ok   unknown class falls back to warrior
@@ -30,11 +30,16 @@ ok   frost: all in range frozen and hit for 2
 ok   mage blink: uses a turn, sets cd 8, emits fx
 ok   mage blink: blocked while on cooldown
 ok   blink: farthest free tile within 4
+ok   fx cleared each turn (after skill 1, after wait 0, after move 0)
+ok   unshielded hit takes 18-19: lost 19
+ok   shield halves damage and counts down: lost 9, shield 2
+ok   smoke dodges for 2 turns then ends: hp 100/100/81, smoke 1/0
 ok   kill gives XP; level 2 offers 3 distinct picks
-ok   moves and skills blocked while picking
+ok   step() returns the same state for moves, wait and skills while picking
 ok   pick applies an upgrade without using a turn
 ok   pick ignored when no level-up is pending
-FAIL warrior beats the Warden at level 1 (HP 46, DEF 5, no upgrades): won=false turns=17 hpLeft=0
-FAIL rogue beats the Warden at level 1 (HP 38, DEF 4, no upgrades): won=false turns=8 hpLeft=0
-FAIL mage beats the Warden at level 1 (HP 35, DEF 3, no upgrades): won=false turns=7 hpLeft=0
-SIM pass=no
+BALANCE {"skillScale":true,"atkEvery":2,"wardenPct":100} warrior 28/2 rogue 20/1 mage 22/1
+ok   warrior bot: wins 7/7 (need >=4), full-HP wins 0 (need <7), F10 levels [10,11,11,10,11,10,10] | 11-01 L10 F10 W hp59/64 atk10 def8 t216 ; 11-02 L11 F10 W hp59/66 atk9 def6 t223 ; 11-03 L11 F10 W hp69/84 atk10 def7 t243 ; 11-04 L10 F10 W hp44/64 atk11 def8 t211 ; 11-05 L11 F10 W hp51/66 atk11 def6 t219 ; 11-06 L10 F10 W hp62/70 atk10 def6 t223 ; 11-07 L10 F10 W hp56/82 atk10 def6 t216
+ok   rogue bot: wins 7/7 (need >=4), full-HP wins 2 (need <7), F10 levels [10,11,10,10,11,10,10] | 11-01 L10 F10 W hp59/62 atk10 def7 t188 ; 11-02 L11 F10 W hp50/70 atk10 def6 t196 ; 11-03 L10 F10 W hp68/68 atk10 def5 t199 ; 11-04 L10 F10 W hp56/56 atk10 def6 t198 ; 11-05 L11 F10 W hp35/64 atk12 def6 t191 ; 11-06 L10 F10 W hp51/56 atk11 def5 t200 ; 11-07 L10 F10 W hp66/68 atk12 def4 t180
+ok   mage bot: wins 7/7 (need >=4), full-HP wins 0 (need <7), F10 levels [10,11,10,10,11,10,10] | 11-01 L10 F10 W hp44/58 atk9 def5 t186 ; 11-02 L11 F10 W hp43/72 atk9 def4 t197 ; 11-03 L10 F10 W hp56/64 atk9 def6 t186 ; 11-04 L10 F10 W hp30/70 atk9 def5 t203 ; 11-05 L11 F10 W hp52/72 atk10 def6 t190 ; 11-06 L10 F10 W hp56/70 atk10 def5 t202 ; 11-07 L10 F10 W hp58/64 atk10 def4 t191
+SIM pass=yes
