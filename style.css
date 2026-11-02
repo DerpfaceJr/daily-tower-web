@@ -161,3 +161,13 @@ footer {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* Support the tower (additive). Prices are a HYPOTHESIS. */
+.support { background: var(--panel); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.support p { margin: 4px 0; }
+.test-label { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #e0413a; color: #fff; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; }
+.tips { display: flex; gap: 8px; margin: 8px 0 4px; }
+.tip { flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #2c2f3b; border: 1px solid #454a5c; color: var(--fg); text-decoration: none; font-weight: 600; }
+.tip:hover, .tip:focus-visible { border-color: var(--accent); }
+.support .small { font-size: 0.8rem; }
+.support a:not(.tip) { color: var(--muted); }
